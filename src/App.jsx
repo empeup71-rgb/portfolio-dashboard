@@ -1429,17 +1429,299 @@ const AssetDetail = ({ holding, T, onBack, onEdit }) => {
   );
 };
 
+
+// ═══════════════════════════════════════════════════════════════════
+// SNOWFLAKE TAB — 8-Dimension Quality Radar
+// ═══════════════════════════════════════════════════════════════════
+const SnowflakeTab = ({ holdings, T }) => {
+  const [sel, setSel] = useState(null);
+  const tv  = holdings.reduce((s,h)=>s+V(h),0);
+  const tc  = holdings.reduce((s,h)=>s+CO(h),0);
+  const tpl = tv - tc;
+
+  // Calculate scores dynamically from holdings
+  const avgBeta  = holdings.reduce((s,h)=>s+(h.beta||1),0)/Math.max(holdings.length,1);
+  const avgVol   = holdings.reduce((s,h)=>s+(h.vol||20),0)/Math.max(holdings.length,1);
+  const divYield = tc>0?holdings.reduce((s,h)=>s+h.qty*(h.div||0),0)/tv*100:0;
+  const returnPct= tc>0?(tpl/tc*100):0;
+  const cryptoPct= holdings.filter(h=>h.type==="Crypto").reduce((s,h)=>s+V(h),0)/Math.max(tv,1)*100;
+  const etfPct   = holdings.filter(h=>h.type==="ETF").reduce((s,h)=>s+V(h),0)/Math.max(tv,1)*100;
+  const sectors  = [...new Set(holdings.map(h=>h.sector))].length;
+
+  const dims = [
+    {
+      subject:"Return",
+      portfolio: Math.min(Math.max(Math.round(50+returnPct*1.5),0),100),
+      benchmark:68,
+      desc:`Total return of ${returnPct>=0?"+":""}${returnPct.toFixed(1)}% vs cost basis. ${returnPct>15?"Above average performance.":returnPct>0?"Moderate positive return.":"Currently below cost basis."}`
+    },
+    {
+      subject:"Risk Mgmt",
+      portfolio: Math.min(Math.max(Math.round(90-avgVol*1.2),0),100),
+      benchmark:62,
+      desc:`Weighted avg volatility ${avgVol.toFixed(1)}%. ${avgVol<20?"Well-managed risk profile.":avgVol<35?"Moderate risk exposure.":"High volatility — consider de-risking."}`
+    },
+    {
+      subject:"Income",
+      portfolio: Math.min(Math.max(Math.round(divYield*12),0),100),
+      benchmark:55,
+      desc:`Dividend yield of ${divYield.toFixed(2)}%. ${divYield>3?"Strong income generation.":divYield>1?"Moderate income stream.":"Low income — growth-oriented portfolio."}`
+    },
+    {
+      subject:"Growth",
+      portfolio: Math.min(Math.max(Math.round(60+returnPct*0.8),0),100),
+      benchmark:72,
+      desc:`Capital appreciation potential based on holdings mix. ${cryptoPct>20?"Crypto adds high-growth exposure.":"Tech and growth stocks drive upside."}`
+    },
+    {
+      subject:"Diversify",
+      portfolio: Math.min(Math.max(Math.round(sectors*14+etfPct*0.4),0),100),
+      benchmark:78,
+      desc:`${sectors} sectors represented. ${etfPct>20?"ETF exposure adds broad diversification.":"Consider adding more sectors for stability."} ${cryptoPct>30?"Crypto concentration may increase risk.":""}`
+    },
+    {
+      subject:"Quality",
+      portfolio: Math.min(Math.max(Math.round(75-avgBeta*5+etfPct*0.2),0),100),
+      benchmark:71,
+      desc:`Avg beta of ${avgBeta.toFixed(2)}. ${avgBeta<1?"Low market sensitivity — defensive profile.":avgBeta<1.3?"Moderate market correlation.":"High beta — amplifies market moves."}`
+    },
+    {
+      subject:"Momentum",
+      portfolio: Math.min(Math.max(Math.round(55+returnPct*1.2),0),100),
+      benchmark:65,
+      desc:`Price momentum based on unrealized gains. ${returnPct>20?"Strong positive momentum across portfolio.":returnPct>5?"Moderate upward trend.":"Momentum is weak or negative."}`
+    },
+    {
+      subject:"Value",
+      portfolio: Math.min(Math.max(Math.round(65-cryptoPct*0.3),0),100),
+      benchmark:69,
+      desc:`Valuation assessment. ${cryptoPct>20?"Crypto reduces traditional valuation score.":etfPct>30?"ETFs provide fair market valuations.":"Holdings trade near intrinsic value estimates."}`
+    },
+  ];
+
+  const totalScore = Math.round(dims.reduce((s,d)=>s+d.portfolio,0)/dims.length);
+  const vsBenchmark = +(dims.reduce((s,d)=>s+(d.portfolio-d.benchmark),0)/dims.length).toFixed(1);
+  const strongest = dims.reduce((a,b)=>a.portfolio>b.portfolio?a:b);
+  const weakest   = dims.reduce((a,b)=>a.portfolio<b.portfolio?a:b);
+
+  const scoreColor = totalScore>=75?BRAND.teal:totalScore>=55?BRAND.gold:BRAND.red;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+        <div style={{background:`${scoreColor}10`,border:`2px solid ${scoreColor}30`,borderLeft:`4px solid ${scoreColor}`,borderRadius:12,padding:"14px 18px"}}>
+          <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2.5,marginBottom:6}}>OVERALL SCORE</div>
+          <div style={{fontSize:38,fontFamily:BRAND.display,fontWeight:800,color:scoreColor,lineHeight:1}}>{totalScore}<span style={{fontSize:18,color:T.muted}}>/100</span></div>
+          <div style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted,marginTop:6}}>
+            {totalScore>=75?"Institutional Grade":totalScore>=55?"Above Average":"Needs Improvement"}
+          </div>
+        </div>
+        <KPI label="vs Benchmark"   value={`${vsBenchmark>=0?"+":""}${vsBenchmark} pts`} sub={vsBenchmark>=0?"Outperforming":"Underperforming"} color={vsBenchmark>=0?BRAND.teal:BRAND.red} T={T}/>
+        <KPI label="Strongest Dim." value={strongest.subject} sub={`Score: ${strongest.portfolio}/100`}  color={BRAND.teal}  T={T}/>
+        <KPI label="Weakest Dim."   value={weakest.subject}   sub={`Score: ${weakest.portfolio}/100`}   color={BRAND.amber} T={T}/>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:14}}>
+        <Card T={T} glow={BRAND.teal}>
+          <STN title="Portfolio Snowflake" sub="8-dimension quality analysis — click any dimension for insight" color={BRAND.teal} T={T}/>
+          <ResponsiveContainer width="100%" height={340}>
+            <RadarChart data={dims} margin={{top:20,right:50,bottom:20,left:50}}>
+              <PolarGrid stroke={T.border} gridType="polygon"/>
+              <PolarAngleAxis dataKey="subject" tick={{fill:T.muted,fontSize:10,fontFamily:BRAND.mono,fontWeight:600}}/>
+              <Radar name="Portfolio" dataKey="portfolio" stroke={BRAND.gold}   fill={BRAND.gold}   fillOpacity={.18} strokeWidth={2.5} dot={{fill:BRAND.gold,  r:5,strokeWidth:0}}/>
+              <Radar name="Benchmark" dataKey="benchmark" stroke={BRAND.blue}   fill={BRAND.blue}   fillOpacity={.08} strokeWidth={1.5} strokeDasharray="4 2"  dot={{fill:BRAND.blue,  r:3,strokeWidth:0}}/>
+              <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
+              <Tooltip contentStyle={{background:T.bg2,border:`1px solid ${T.border}`,borderRadius:10,fontSize:11}}/>
+            </RadarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card T={T}>
+          <STN title="Dimension Scores" sub="Click any row for analysis insight" color={BRAND.gold} T={T}/>
+          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+            {dims.map((d,i)=>{
+              const diff=d.portfolio-d.benchmark;
+              const isS=sel===d.subject;
+              const dc=d.portfolio>=75?BRAND.teal:d.portfolio>=50?BRAND.gold:BRAND.red;
+              return (
+                <div key={i} onClick={()=>setSel(isS?null:d.subject)} style={{padding:"9px 12px",borderRadius:9,cursor:"pointer",background:isS?`${BRAND.gold}10`:T.surface,border:`1px solid ${isS?BRAND.gold+"44":T.border}`,transition:"all 0.2s"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                    <span style={{fontFamily:BRAND.display,fontWeight:600,fontSize:12,color:isS?BRAND.gold:T.text}}>{d.subject}</span>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <Chip label={`${d.portfolio}/100`} color={dc}/>
+                      <Chip label={diff>=0?`+${diff}`:String(diff)} color={diff>=0?BRAND.teal:BRAND.red}/>
+                    </div>
+                  </div>
+                  <div style={{height:3,background:T.border,borderRadius:2}}>
+                    <div style={{height:"100%",width:`${d.portfolio}%`,background:`linear-gradient(90deg,${dc},${dc}80)`,borderRadius:2,transition:"width 0.4s ease"}}/>
+                  </div>
+                  {isS&&<div style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted,marginTop:8,lineHeight:1.6,padding:"6px 0 2px"}}>{d.desc}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// FACTOR EXPOSURE TAB — Institutional Analysis
+// ═══════════════════════════════════════════════════════════════════
+const FactorTab = ({ holdings, T }) => {
+  const tv = holdings.reduce((s,h)=>s+V(h),0);
+
+  // Factor scores per holding type
+  const factorMap = {
+    "Stock": { value:55, growth:78, momentum:70, quality:72, lowvol:45, size:60 },
+    "ETF":   { value:65, growth:62, momentum:60, quality:85, lowvol:75, size:80 },
+    "Crypto":{ value:25, growth:92, momentum:80, quality:30, lowvol:10, size:35 },
+    "Bond":  { value:80, growth:20, momentum:25, quality:90, lowvol:95, size:70 },
+  };
+
+  // Weighted factor scores
+  const factors = ["value","growth","momentum","quality","lowvol","size"];
+  const factorLabels = {
+    value:"Value", growth:"Growth", momentum:"Momentum",
+    quality:"Quality", lowvol:"Low Vol", size:"Size"
+  };
+  const factorColors = {
+    value:BRAND.gold, growth:BRAND.teal, momentum:BRAND.blue,
+    quality:BRAND.purple, lowvol:BRAND.green, size:BRAND.amber
+  };
+  const factorDesc = {
+    value:    "Holdings trading below intrinsic value — P/E, P/B ratios",
+    growth:   "Revenue and earnings growth potential — high-growth companies",
+    momentum: "Price trend strength — recent outperformers tend to continue",
+    quality:  "Financial health, ROE, low debt, stable earnings",
+    lowvol:   "Lower volatility exposure — defensive and stable holdings",
+    size:     "Market cap exposure — large cap vs small cap mix",
+  };
+
+  const weightedScores = factors.reduce((acc, f) => {
+    const score = holdings.reduce((s,h) => {
+      const w = V(h)/Math.max(tv,1);
+      const fm = factorMap[h.type]||factorMap["Stock"];
+      return s + fm[f]*w;
+    }, 0);
+    acc[f] = Math.round(score);
+    return acc;
+  }, {});
+
+  const benchScores = { value:60, growth:65, momentum:62, quality:70, lowvol:58, size:65 };
+
+  const radarData = factors.map(f=>({
+    subject: factorLabels[f],
+    portfolio: weightedScores[f],
+    benchmark: benchScores[f],
+  }));
+
+  // Factor attribution by holding
+  const holdingFactors = [...holdings].sort((a,b)=>V(b)-V(a)).slice(0,8).map(h=>({
+    symbol: h.symbol,
+    weight: +(V(h)/Math.max(tv,1)*100).toFixed(1),
+    ...Object.fromEntries(factors.map(f=>[f, factorMap[h.type]?.[f]||50])),
+  }));
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10}}>
+        {factors.map(f=>{
+          const score = weightedScores[f];
+          const diff  = score - benchScores[f];
+          const color = factorColors[f];
+          return (
+            <div key={f} style={{background:`${color}08`,border:`1px solid ${color}22`,borderLeft:`3px solid ${color}`,borderRadius:10,padding:13}}>
+              <div style={{fontSize:8,fontFamily:BRAND.mono,color:T.muted,letterSpacing:1.5,marginBottom:5,textTransform:"uppercase"}}>{factorLabels[f]}</div>
+              <div style={{fontSize:22,fontFamily:BRAND.display,fontWeight:800,color,marginBottom:5}}>{score}</div>
+              <div style={{height:3,background:T.border,borderRadius:2,marginBottom:5}}>
+                <div style={{height:"100%",width:`${score}%`,background:color,borderRadius:2}}/>
+              </div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:diff>=0?BRAND.teal:BRAND.red}}>{diff>=0?"+":""}{diff} vs benchmark</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr",gap:14}}>
+        <Card T={T} glow={BRAND.purple}>
+          <STN title="Factor Exposure Radar" sub="Portfolio vs benchmark factor tilts" color={BRAND.purple} T={T}/>
+          <ResponsiveContainer width="100%" height={320}>
+            <RadarChart data={radarData} margin={{top:20,right:50,bottom:20,left:50}}>
+              <PolarGrid stroke={T.border} gridType="polygon"/>
+              <PolarAngleAxis dataKey="subject" tick={{fill:T.muted,fontSize:10,fontFamily:BRAND.mono,fontWeight:600}}/>
+              <Radar name="Portfolio" dataKey="portfolio" stroke={BRAND.purple} fill={BRAND.purple} fillOpacity={.18} strokeWidth={2.5} dot={{fill:BRAND.purple,r:5,strokeWidth:0}}/>
+              <Radar name="Benchmark" dataKey="benchmark" stroke={BRAND.muted}  fill={BRAND.muted}  fillOpacity={.06} strokeWidth={1.5} strokeDasharray="4 2" dot={{fill:BRAND.muted,r:3,strokeWidth:0}}/>
+              <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
+              <Tooltip contentStyle={{background:T.bg2,border:`1px solid ${T.border}`,borderRadius:10,fontSize:11}}/>
+            </RadarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card T={T}>
+          <STN title="Factor Descriptions" color={BRAND.blue} T={T}/>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {factors.map(f=>(
+              <div key={f} style={{padding:"8px 11px",background:T.surface,borderRadius:8,borderLeft:`3px solid ${factorColors[f]}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                  <span style={{fontFamily:BRAND.display,fontWeight:600,fontSize:11,color:factorColors[f]}}>{factorLabels[f]}</span>
+                  <div style={{display:"flex",gap:5}}>
+                    <Chip label={`${weightedScores[f]}/100`} color={factorColors[f]}/>
+                    <Chip label={weightedScores[f]>=benchScores[f]?`+${weightedScores[f]-benchScores[f]}`:`${weightedScores[f]-benchScores[f]}`} color={weightedScores[f]>=benchScores[f]?BRAND.teal:BRAND.red}/>
+                  </div>
+                </div>
+                <div style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted,lineHeight:1.4}}>{factorDesc[f]}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <Card T={T}>
+        <STN title="Factor Attribution by Holding" sub="Individual holding contribution to each factor score" color={BRAND.amber} T={T}/>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead><tr style={{borderBottom:`1px solid ${T.border}`}}>
+              <th style={{textAlign:"left",padding:"7px 10px",color:T.muted,fontFamily:BRAND.mono,fontSize:9,letterSpacing:1}}>Symbol</th>
+              <th style={{textAlign:"left",padding:"7px 10px",color:T.muted,fontFamily:BRAND.mono,fontSize:9,letterSpacing:1}}>Weight</th>
+              {factors.map(f=>(
+                <th key={f} style={{textAlign:"center",padding:"7px 10px",color:factorColors[f],fontFamily:BRAND.mono,fontSize:9,letterSpacing:1}}>{factorLabels[f]}</th>
+              ))}
+            </tr></thead>
+            <tbody>{holdingFactors.map((h,i)=>(
+              <tr key={i} style={{borderBottom:`1px solid ${T.border}`,transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background=T.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <td style={{padding:"9px 10px",fontWeight:700,color:BRAND.gold,fontFamily:BRAND.mono}}>{h.symbol}</td>
+                <td style={{padding:"9px 10px",fontFamily:BRAND.mono,color:T.muted}}>{h.weight}%</td>
+                {factors.map(f=>{
+                  const score=h[f];
+                  const color=score>=75?BRAND.teal:score>=50?BRAND.gold:BRAND.red;
+                  return <td key={f} style={{padding:"9px 10px",textAlign:"center"}}>
+                    <div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:34,height:22,borderRadius:5,background:`${color}14`,fontFamily:BRAND.mono,fontSize:10,fontWeight:700,color}}>{score}</div>
+                  </td>;
+                })}
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════════
 // ANALYSIS PANEL — shown below chart at each level
 // ═══════════════════════════════════════════════════════════════════
 const ANALYSIS_TABS = [
-  { id:"perf",    label:"Performance",  icon:"📈", subs:null },
-  { id:"bench",   label:"Benchmark",    icon:"📐", subs:null },
-  { id:"risk",    label:"Risk",         icon:"🛡", subs:null },
-  { id:"corr",    label:"Correlations", icon:"🔥", subs:null },
-  { id:"div",     label:"Dividends",    icon:"💰", subs:null },
-  { id:"proj",    label:"Projections",  icon:"🔮", subs:null },
-  { id:"mc",      label:"Monte Carlo",  icon:"🎲", subs:null },
+  { id:"perf",    label:"Performance",  icon:"📈" },
+  { id:"bench",   label:"Benchmark",    icon:"📐" },
+  { id:"risk",    label:"Risk",         icon:"🛡" },
+  { id:"corr",    label:"Correlations", icon:"🔥" },
+  { id:"div",     label:"Dividends",    icon:"💰" },
+  { id:"proj",    label:"Projections",  icon:"🔮" },
+  { id:"mc",      label:"Monte Carlo",  icon:"🎲" },
+  { id:"snow",    label:"Snowflake",    icon:"❄️" },
+  { id:"factor",  label:"Factors",      icon:"⚖️" },
 ];
 
 const AnalysisPanel = ({ holdings, T }) => {
@@ -1476,6 +1758,8 @@ const AnalysisPanel = ({ holdings, T }) => {
         {activeTab==="div"  && <DividendsTab    holdings={holdings} T={T}/>}
         {activeTab==="proj" && <ProjectionsTab  holdings={holdings} T={T}/>}
         {activeTab==="mc"   && <MonteCarloTab   holdings={holdings} T={T}/>}
+        {activeTab==="snow"  && <SnowflakeTab    holdings={holdings} T={T}/>}
+        {activeTab==="factor"&& <FactorTab       holdings={holdings} T={T}/>}
       </div>
     </div>
   );
