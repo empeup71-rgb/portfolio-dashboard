@@ -1384,7 +1384,7 @@ export default function App(){
 
       {/* ── HEADER ── */}
       <div style={{borderBottom:`1px solid rgba(201,168,76,0.12)`,background:"rgba(2,13,24,0.97)",backdropFilter:"blur(24px)",position:"sticky",top:0,zIndex:100,boxShadow:"0 4px 32px rgba(0,0,0,0.4)"}}>
-        <div style={{maxWidth:1600,margin:"0 auto",padding:"0 28px"}}>
+        <div style={{maxWidth:"100%",margin:"0 auto",padding:"0 32px"}}>
 
           {/* Top bar */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",height:58}}>
@@ -1431,7 +1431,7 @@ export default function App(){
       </div>
 
       {/* ── CONTENT ── */}
-      <div style={{maxWidth:1600,margin:"0 auto",padding:"24px 28px",animation:"fadeIn 0.35s ease"}}>
+      <div style={{maxWidth:"100%",margin:"0 auto",padding:"24px 32px",animation:"fadeIn 0.35s ease"}}>
         {tab==="overview"   &&<OverviewTab/>}
         {tab==="performance"&&<div><SubTabNav subs={cur?.subs} activeSub={activeSub} setActiveSub={setAS} color={col}/>{activeSub==="perf"&&<PerformanceTab/>}{activeSub==="benchmark"&&<BenchmarkTab/>}</div>}
         {tab==="risk"       &&<div><SubTabNav subs={cur?.subs} activeSub={activeSub} setActiveSub={setAS} color={col}/>{activeSub==="risk"&&<RiskTab/>}{activeSub==="corr"&&<CorrelationsTab/>}</div>}
