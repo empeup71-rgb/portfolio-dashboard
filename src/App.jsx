@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  AreaChart, Area, BarChart, Bar, LineChart, Line, ComposedChart,
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Legend, ReferenceLine, Cell, PieChart, Pie, ScatterChart, Scatter, ZAxis
@@ -292,7 +292,7 @@ const SubTabNav = ({ subs, activeSub, setActiveSub, color, T }) => {
 // ═══════════════════════════════════════════════════════════════════
 // HOLDINGS TABLE COMPONENT (reusable across all levels)
 // ═══════════════════════════════════════════════════════════════════
-const HoldingsTable = ({ holdings, title, T, onEdit }) => {
+const HoldingsTable = ({ holdings, title, T, onEdit, onRowClick }) => {
   const [sort, setSort] = useState({ col:"value", dir:-1 });
   const TV_local = holdings.reduce((s,h)=>s+V(h),0);
 
@@ -334,7 +334,8 @@ const HoldingsTable = ({ holdings, title, T, onEdit }) => {
               const hv=V(h),hpl=PL(h),hplp=PLP(h),wt=hv/TV_local*100;
               return (
                 <tr key={i}
-                  style={{borderBottom:`1px solid ${T.border}`,transition:"background 0.15s"}}
+                  style={{borderBottom:`1px solid ${T.border}`,transition:"background 0.15s",cursor:onRowClick?"pointer":"default"}}
+                  onClick={()=>onRowClick&&onRowClick(h)}
                   onMouseEnter={e=>e.currentTarget.style.background=T.surface}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   <td style={{padding:"9px 10px",fontWeight:700,color:BRAND.gold,fontFamily:BRAND.mono,fontSize:13}}>{h.symbol}</td>
@@ -1116,6 +1117,318 @@ const MonteCarloTab = ({ holdings, T }) => {
   );
 };
 
+
+// ═══════════════════════════════════════════════════════════════════
+// CANDLESTICK DATA GENERATOR
+// ═══════════════════════════════════════════════════════════════════
+const genCandles = (price, pid) => {
+  const p = PERIODS.find(x=>x.id===pid)||PERIODS[4];
+  const N = Math.min(p.days, 365);
+  let close = price * ({"1D":.998,"1W":.988,"1M":.970,"3M":.935,"1Y":.870,"3Y":.650,"5Y":.480,"10Y":.280}[pid]||.87);
+  const out = [];
+  for(let i=N;i>=0;i--){
+    const chg = (Math.random()-.48)*close*.022;
+    const open = close;
+    close = Math.max(close+chg, price*.1);
+    const high = Math.max(open,close)*(1+Math.random()*.012);
+    const low  = Math.min(open,close)*(1-Math.random()*.012);
+    const dt = new Date(); dt.setDate(dt.getDate()-i);
+    const fmt = p.days<=30
+      ? dt.toLocaleDateString("en",{month:"short",day:"numeric"})
+      : dt.toLocaleDateString("en",{month:"short",day:"numeric"});
+    out.push({ date:fmt, open:+open.toFixed(2), high:+high.toFixed(2), low:+low.toFixed(2), close:+close.toFixed(2), volume:Math.round(1e6+Math.random()*9e6) });
+  }
+  out[out.length-1].close = price;
+  return out;
+};
+
+// RSI calculation
+const calcRSI = (candles, period=14) => {
+  if(candles.length < period+1) return candles.map(c=>({date:c.date,rsi:50}));
+  const changes = candles.slice(1).map((c,i)=>c.close-candles[i].close);
+  let gains=0,losses=0;
+  changes.slice(0,period).forEach(c=>{ if(c>0)gains+=c; else losses-=c; });
+  let avgGain=gains/period, avgLoss=losses/period;
+  const rsi=[...Array(period).fill(null)];
+  rsi.push(avgLoss===0?100:+(100-100/(1+avgGain/avgLoss)).toFixed(2));
+  for(let i=period;i<changes.length;i++){
+    const c=changes[i];
+    avgGain=(avgGain*(period-1)+(c>0?c:0))/period;
+    avgLoss=(avgLoss*(period-1)+(c<0?-c:0))/period;
+    rsi.push(avgLoss===0?100:+(100-100/(1+avgGain/avgLoss)).toFixed(2));
+  }
+  return candles.map((c,i)=>({date:c.date,rsi:rsi[i]||50}));
+};
+
+// MACD calculation
+const calcMACD = (candles) => {
+  const closes = candles.map(c=>c.close);
+  const ema = (data, period) => {
+    const k=2/(period+1); let val=data[0];
+    return data.map(d=>{ val=d*k+val*(1-k); return +val.toFixed(4); });
+  };
+  const ema12=ema(closes,12), ema26=ema(closes,26);
+  const macdLine=ema12.map((v,i)=>+(v-ema26[i]).toFixed(4));
+  const signal=ema(macdLine,9);
+  const hist=macdLine.map((v,i)=>+(v-signal[i]).toFixed(4));
+  return candles.map((c,i)=>({date:c.date,macd:macdLine[i],signal:signal[i],hist:hist[i]}));
+};
+
+// Bollinger Bands
+const calcBollinger = (candles, period=20) => {
+  return candles.map((c,i)=>{
+    if(i<period-1) return {date:c.date,close:c.close,upper:c.close*1.02,lower:c.close*.98,mid:c.close};
+    const slice=candles.slice(i-period+1,i+1).map(x=>x.close);
+    const mean=slice.reduce((s,v)=>s+v,0)/period;
+    const std=Math.sqrt(slice.reduce((s,v)=>s+(v-mean)**2,0)/period);
+    return {date:c.date,close:c.close,upper:+(mean+std*2).toFixed(2),lower:+(mean-std*2).toFixed(2),mid:+mean.toFixed(2)};
+  });
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// ASSET DETAIL VIEW — Level 4
+// ═══════════════════════════════════════════════════════════════════
+const AssetDetail = ({ holding, T, onBack, onEdit }) => {
+  const [period, setPeriod]   = useState("3M");
+  const [chartType, setChart] = useState("candle"); // candle | area | rsi | macd | bollinger
+  const [expandC, setExpandC] = useState(false);
+
+  const candles  = useMemo(()=>genCandles(holding.price, period),[holding.price, period]);
+  const rsiData  = useMemo(()=>calcRSI(candles),[candles]);
+  const macdData = useMemo(()=>calcMACD(candles),[candles]);
+  const bollData = useMemo(()=>calcBollinger(candles),[candles]);
+
+  const lastRSI  = rsiData[rsiData.length-1]?.rsi||50;
+  const lastMACD = macdData[macdData.length-1];
+  const hv = V(holding), hpl = PL(holding), hplp = PLP(holding);
+
+  const CHART_TYPES = [
+    {id:"area",     label:"Area",      icon:"📈"},
+    {id:"candle",   label:"Candles",   icon:"🕯"},
+    {id:"bollinger",label:"Bollinger", icon:"〰️"},
+    {id:"rsi",      label:"RSI",       icon:"📊"},
+    {id:"macd",     label:"MACD",      icon:"⚡"},
+  ];
+
+  // Simple candlestick using ComposedChart
+  const CandleChart = ({height}) => {
+    const interval = Math.floor(candles.length/8);
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <ComposedChart data={candles} margin={{top:5,right:5,bottom:0,left:0}}>
+          <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
+          <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={interval}/>
+          <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${v.toLocaleString()}`} width={65}/>
+          <Tooltip content={({active,payload,label})=>{
+            if(!active||!payload?.length)return null;
+            const d=payload[0]?.payload;
+            if(!d)return null;
+            return(<div style={{background:T.bg2,border:`1px solid ${BRAND.gold}44`,borderRadius:10,padding:"10px 14px",fontSize:11,fontFamily:BRAND.mono}}>
+              <div style={{color:T.muted,marginBottom:6,fontSize:10}}>{label}</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px"}}>
+                {[["Open",d.open],["High",d.high],["Low",d.low],["Close",d.close]].map(([k,v])=>(
+                  <div key={k}><span style={{color:T.muted}}>{k}: </span><b style={{color:d.close>=d.open?BRAND.teal:BRAND.red}}>${v?.toLocaleString()}</b></div>
+                ))}
+              </div>
+              <div style={{marginTop:4,color:T.muted}}>Vol: <b style={{color:BRAND.blue}}>{d.volume?.toLocaleString()}</b></div>
+            </div>);
+          }}/>
+          {/* High-Low range */}
+          <Bar dataKey="high" fill="transparent" stroke="transparent"/>
+          {candles.map((c,i)=>(
+            <ReferenceLine key={i} segment={[{x:c.date,y:c.low},{x:c.date,y:c.high}]} stroke={c.close>=c.open?BRAND.teal:BRAND.red} strokeWidth={1} ifOverflow="visible"/>
+          ))}
+          {/* OHLC bars */}
+          <Bar dataKey="close" radius={[2,2,0,0]} maxBarSize={8}>
+            {candles.map((c,i)=><Cell key={i} fill={c.close>=c.open?BRAND.teal:BRAND.red} opacity={.85}/>)}
+          </Bar>
+        </ComposedChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  const AreaChartView = ({height}) => {
+    const areaData = candles.map(c=>({date:c.date,value:c.close}));
+    const isUp = holding.price >= holding.avgCost;
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <AreaChart data={areaData} margin={{top:5,right:5,bottom:0,left:0}}>
+          <defs><linearGradient id="gAsset" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={isUp?BRAND.teal:BRAND.red} stopOpacity={.3}/><stop offset="100%" stopColor={isUp?BRAND.teal:BRAND.red} stopOpacity={.02}/></linearGradient></defs>
+          <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
+          <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(areaData.length/7)}/>
+          <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${v.toLocaleString()}`} width={65}/>
+          <Tooltip content={<TT T={T}/>}/>
+          <ReferenceLine y={holding.avgCost} stroke={BRAND.amber} strokeDasharray="4 2" label={{value:`Cost $${holding.avgCost}`,fill:BRAND.amber,fontSize:9,position:"right"}}/>
+          <Area type="monotoneX" dataKey="value" name="Price" stroke={isUp?BRAND.teal:BRAND.red} strokeWidth={2.5} fill="url(#gAsset)" dot={false} activeDot={{r:5,fill:isUp?BRAND.teal:BRAND.red,stroke:T.bg,strokeWidth:2}}/>
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  const RSIChart = ({height}) => {
+    const rsi = lastRSI;
+    const zone = rsi>=70?"Overbought":rsi<=30?"Oversold":"Neutral";
+    const zoneColor = rsi>=70?BRAND.red:rsi<=30?BRAND.teal:BRAND.gold;
+    return (
+      <div>
+        <div style={{display:"flex",gap:14,marginBottom:10,alignItems:"center"}}>
+          <div style={{fontFamily:BRAND.mono,fontSize:13,fontWeight:700,color:zoneColor}}>RSI(14): {rsi.toFixed(1)}</div>
+          <Chip label={zone} color={zoneColor}/>
+          <div style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted}}>RSI &gt;70 = overbought · RSI &lt;30 = oversold</div>
+        </div>
+        <ResponsiveContainer width="100%" height={height-40}>
+          <LineChart data={rsiData} margin={{top:5,right:5,bottom:0,left:0}}>
+            <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
+            <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(rsiData.length/7)}/>
+            <YAxis domain={[0,100]} tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} width={35}/>
+            <Tooltip content={<TT T={T}/>}/>
+            <ReferenceLine y={70} stroke={BRAND.red}   strokeDasharray="4 2" label={{value:"70",fill:BRAND.red,  fontSize:9,position:"right"}}/>
+            <ReferenceLine y={30} stroke={BRAND.teal}  strokeDasharray="4 2" label={{value:"30",fill:BRAND.teal,fontSize:9,position:"right"}}/>
+            <ReferenceLine y={50} stroke={T.border}    strokeDasharray="2 4"/>
+            <Line type="monotoneX" dataKey="rsi" name="RSI" stroke={BRAND.purple} strokeWidth={2} dot={false} activeDot={{r:4,fill:BRAND.purple,stroke:T.bg,strokeWidth:2}}/>
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  const MACDChart = ({height}) => {
+    const signal = lastMACD?.macd>=lastMACD?.signal?"Bullish":"Bearish";
+    return (
+      <div>
+        <div style={{display:"flex",gap:14,marginBottom:10,alignItems:"center"}}>
+          <div style={{fontFamily:BRAND.mono,fontSize:13,fontWeight:700,color:lastMACD?.macd>=lastMACD?.signal?BRAND.teal:BRAND.red}}>MACD: {lastMACD?.macd?.toFixed(2)}</div>
+          <div style={{fontFamily:BRAND.mono,fontSize:11,color:T.muted}}>Signal: {lastMACD?.signal?.toFixed(2)}</div>
+          <Chip label={signal} color={lastMACD?.macd>=lastMACD?.signal?BRAND.teal:BRAND.red}/>
+        </div>
+        <ResponsiveContainer width="100%" height={height-40}>
+          <ComposedChart data={macdData} margin={{top:5,right:5,bottom:0,left:0}}>
+            <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
+            <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(macdData.length/7)}/>
+            <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} width={45} tickFormatter={v=>v.toFixed(1)}/>
+            <Tooltip content={<TT T={T}/>}/>
+            <ReferenceLine y={0} stroke={T.muted} strokeWidth={1}/>
+            <Bar dataKey="hist" name="Histogram" radius={[2,2,0,0]} maxBarSize={6}>
+              {macdData.map((d,i)=><Cell key={i} fill={d.hist>=0?BRAND.teal:BRAND.red} opacity={.8}/>)}
+            </Bar>
+            <Line type="monotoneX" dataKey="macd"   name="MACD"   stroke={BRAND.blue}   strokeWidth={2} dot={false}/>
+            <Line type="monotoneX" dataKey="signal" name="Signal" stroke={BRAND.amber}  strokeWidth={1.5} dot={false} strokeDasharray="4 2"/>
+            <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  const BollingerChart = ({height}) => {
+    const lastB = bollData[bollData.length-1];
+    const pctB  = lastB ? ((holding.price-lastB.lower)/(lastB.upper-lastB.lower)*100).toFixed(1) : 50;
+    const bSignal = pctB>80?"Near Upper Band":pctB<20?"Near Lower Band":"Within Bands";
+    return (
+      <div>
+        <div style={{display:"flex",gap:14,marginBottom:10,alignItems:"center"}}>
+          <div style={{fontFamily:BRAND.mono,fontSize:13,fontWeight:700,color:BRAND.cyan}}>%B: {pctB}%</div>
+          <Chip label={bSignal} color={+pctB>80?BRAND.red:+pctB<20?BRAND.teal:BRAND.gold}/>
+          <div style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted}}>Upper: ${lastB?.upper?.toFixed(0)} · Mid: ${lastB?.mid?.toFixed(0)} · Lower: ${lastB?.lower?.toFixed(0)}</div>
+        </div>
+        <ResponsiveContainer width="100%" height={height-40}>
+          <AreaChart data={bollData} margin={{top:5,right:5,bottom:0,left:0}}>
+            <defs>
+              <linearGradient id="gBoll" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BRAND.cyan} stopOpacity={.12}/><stop offset="100%" stopColor={BRAND.cyan} stopOpacity={.02}/></linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
+            <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(bollData.length/7)}/>
+            <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${v.toFixed(0)}`} width={60}/>
+            <Tooltip content={<TT T={T}/>}/>
+            <Area type="monotoneX" dataKey="upper" name="Upper Band" stroke={BRAND.cyan}   strokeWidth={1.5} fill="url(#gBoll)" strokeDasharray="4 2" dot={false}/>
+            <Area type="monotoneX" dataKey="lower" name="Lower Band" stroke={BRAND.cyan}   strokeWidth={1.5} fill="transparent" strokeDasharray="4 2" dot={false}/>
+            <Line type="monotoneX" dataKey="mid"   name="Mid (MA20)" stroke={BRAND.amber}  strokeWidth={1.5} dot={false} strokeDasharray="3 2"/>
+            <Line type="monotoneX" dataKey="close" name="Price"      stroke={hplp>=0?BRAND.teal:BRAND.red} strokeWidth={2.5} dot={false} activeDot={{r:5}}/>
+            <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  const ActiveChart = ({height}) => {
+    if(chartType==="candle")    return <CandleChart height={height}/>;
+    if(chartType==="area")      return <AreaChartView height={height}/>;
+    if(chartType==="rsi")       return <RSIChart height={height}/>;
+    if(chartType==="macd")      return <MACDChart height={height}/>;
+    if(chartType==="bollinger") return <BollingerChart height={height}/>;
+    return null;
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14,animation:"fadeIn 0.3s ease"}}>
+      {/* Back button + title */}
+      <div style={{display:"flex",alignItems:"center",gap:14}}>
+        <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:`1px solid ${T.border}`,background:"transparent",cursor:"pointer",color:T.muted,fontFamily:BRAND.display,fontSize:11,fontWeight:600,transition:"all 0.2s"}}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor=BRAND.gold+"55";e.currentTarget.style.color=BRAND.gold;}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.muted;}}>
+          ← Back
+        </button>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:44,height:44,borderRadius:11,background:`${BRAND.gold}15`,border:`1px solid ${BRAND.gold}33`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:BRAND.mono,fontSize:13,fontWeight:800,color:BRAND.gold}}>{holding.symbol}</div>
+          <div>
+            <div style={{fontSize:18,fontFamily:BRAND.display,fontWeight:800,color:T.text}}>{holding.name}</div>
+            <div style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted}}>{holding.broker} · {holding.fund} · <Chip label={holding.type} color={TYPE_COLOR[holding.type]||BRAND.gold}/></div>
+          </div>
+        </div>
+        <button onClick={()=>onEdit(holding)} style={{marginLeft:"auto",padding:"7px 14px",borderRadius:9,border:`1px solid ${BRAND.gold}44`,background:`${BRAND.gold}10`,cursor:"pointer",color:BRAND.gold,fontFamily:BRAND.display,fontSize:11,fontWeight:700}}>✏️ Edit</button>
+      </div>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10}}>
+        <KPI label="Market Value"  value={`$${Math.round(hv).toLocaleString()}`}     color={BRAND.gold}   T={T}/>
+        <KPI label="Price"         value={`$${holding.price.toLocaleString()}`}       color={T.text}       T={T}/>
+        <KPI label="Avg Cost"      value={`$${holding.avgCost.toLocaleString()}`}     color={T.muted}      T={T}/>
+        <KPI label="P&L $"         value={`${hpl>=0?"+":"-"}$${Math.abs(Math.round(hpl)).toLocaleString()}`} color={hpl>=0?BRAND.teal:BRAND.red} T={T}/>
+        <KPI label="P&L %"         value={`${hplp>=0?"+":""}${hplp.toFixed(2)}%`}    color={hplp>=0?BRAND.teal:BRAND.red} T={T}/>
+        <KPI label="Quantity"      value={holding.qty}                                color={BRAND.blue}   T={T}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+        <KPI label="Beta"          value={(holding.beta||1).toFixed(2)}               color={BRAND.purple} T={T}/>
+        <KPI label="Volatility"    value={`${(holding.vol||20).toFixed(1)}%`}         color={BRAND.amber}  T={T}/>
+        <KPI label="RSI (14)"      value={lastRSI.toFixed(1)} sub={lastRSI>=70?"Overbought":lastRSI<=30?"Oversold":"Neutral"} color={lastRSI>=70?BRAND.red:lastRSI<=30?BRAND.teal:BRAND.gold} T={T}/>
+        <KPI label="MACD Signal"   value={lastMACD?.macd>=lastMACD?.signal?"Bullish":"Bearish"} color={lastMACD?.macd>=lastMACD?.signal?BRAND.teal:BRAND.red} T={T}/>
+      </div>
+
+      {/* Chart */}
+      <Card T={T} glow={hplp>=0?BRAND.teal:BRAND.red}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{display:"flex",gap:4}}>
+            {CHART_TYPES.map(ct=>(
+              <button key={ct.id} onClick={()=>setChart(ct.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:8,border:`1px solid ${chartType===ct.id?(hplp>=0?BRAND.teal:BRAND.red)+"55":T.border}`,cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:600,background:chartType===ct.id?`${hplp>=0?BRAND.teal:BRAND.red}12`:"transparent",color:chartType===ct.id?(hplp>=0?BRAND.teal:BRAND.red):T.muted,transition:"all 0.15s"}}>
+                {ct.icon} {ct.label}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <PBtn active={period} onChange={setPeriod} color={hplp>=0?BRAND.teal:BRAND.red} T={T}/>
+            <ExpandBtn onClick={()=>setExpandC(true)} color={hplp>=0?BRAND.teal:BRAND.red}/>
+          </div>
+        </div>
+        <ActiveChart height={280}/>
+      </Card>
+      {expandC&&(
+        <ChartModal title={`${holding.symbol} — ${CHART_TYPES.find(c=>c.id===chartType)?.label}`} sub={`${holding.name} · ${period}`} color={hplp>=0?BRAND.teal:BRAND.red} onClose={()=>setExpandC(false)} T={T}>
+          <ActiveChart height={460}/>
+        </ChartModal>
+      )}
+
+      {/* Notes */}
+      {holding.notes&&(
+        <Card T={T}>
+          <STN title="Notes" color={BRAND.muted} T={T}/>
+          <div style={{fontSize:12,fontFamily:BRAND.mono,color:T.muted,lineHeight:1.6}}>{holding.notes}</div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════════
 // ANALYSIS PANEL — shown below chart at each level
 // ═══════════════════════════════════════════════════════════════════
@@ -1181,6 +1494,7 @@ export default function App() {
   const [botMem,  setBotMem  ] = useState(initBotMemory);
   const [navLevel,setNavLevel] = useState({ level:"total", broker:null, fund:null });
   const [period,  setPeriod  ] = useState("1Y");
+  const [selectedAsset, setSelectedAsset] = useState(null);
 
   const T = isDark ? DARK : LIGHT;
 
@@ -1339,17 +1653,29 @@ export default function App() {
         </div>
 
         {/* Holdings Table */}
-        <div style={{marginBottom:14}}>
-          <HoldingsTable
-            holdings={visibleHoldings}
-            title={`${navLabel} — Holdings`}
+        {selectedAsset ? (
+          <AssetDetail
+            holding={selectedAsset}
             T={T}
-            onEdit={setEditH}
+            onBack={()=>setSelectedAsset(null)}
+            onEdit={(h)=>{setSelectedAsset(null);setEditH(h);}}
           />
-        </div>
+        ) : (
+          <>
+            <div style={{marginBottom:14}}>
+              <HoldingsTable
+                holdings={visibleHoldings}
+                title={`${navLabel} — Holdings`}
+                T={T}
+                onEdit={setEditH}
+                onRowClick={setSelectedAsset}
+              />
+            </div>
+            <AnalysisPanel holdings={visibleHoldings} T={T}/>
+          </>
+        )}
 
-        {/* Analysis Panel */}
-        <AnalysisPanel holdings={visibleHoldings} T={T}/>
+
 
         <div style={{marginTop:40,textAlign:"center",color:T.muted,fontSize:9,fontFamily:BRAND.mono,letterSpacing:3,opacity:.4}}>
           PORTFOLIO COMMAND CENTER v3.0 · 15 AI AGENTS · INSTITUTIONAL GRADE
