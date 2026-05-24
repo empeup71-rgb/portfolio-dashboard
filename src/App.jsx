@@ -626,8 +626,8 @@ const BenchmarkTab = ({ holdings, T }) => {
   const tv = holdings.reduce((s,h)=>s+V(h),0);
 
   const BENCHES = [
-    {key:"S&P 500",color:BRAND.blue},{key:"Nasdaq",color:BRAND.purple},
-    {key:"Dow Jones",color:BRAND.amber},{key:"Bitcoin",color:BRAND.gold},{key:"Bonds",color:BRAND.green},
+    {key:"S&P 500",color:"#4DA6FF"},{key:"Nasdaq",color:"#CC99FF"},
+    {key:"Dow Jones",color:"#FFB347"},{key:"Bitcoin",color:"#FFD700"},{key:"Bonds",color:"#66FF99"},
   ];
   const days = PERIODS.find(p=>p.id===period)?.days||365;
   const cd = useMemo(()=>{
@@ -1051,9 +1051,9 @@ const MonteCarloTab = ({ holdings, T }) => {
         <Tooltip content={<TT T={T}/>}/>
         <ReferenceLine y={tg} stroke={BRAND.amber} strokeDasharray="5 3" label={{value:`Target $${(tg/1e3).toFixed(0)}k`,fill:BRAND.amber,fontSize:9,fontFamily:BRAND.mono,position:"right"}}/>
         <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:10}}/>
-        <Area type="monotoneX" dataKey="p90" name="Optimistic (P90)" stroke={BRAND.teal} strokeWidth={2}   fill="url(#gMC90)" dot={false}/>
-        <Area type="monotoneX" dataKey="p50" name="Base Case (P50)"  stroke={BRAND.gold} strokeWidth={2.5} fill="url(#gMC50)" dot={false}/>
-        <Area type="monotoneX" dataKey="p10" name="Pessimistic (P10)"stroke={BRAND.red}  strokeWidth={1.5} fill="url(#gMC10)" dot={false}/>
+        <Area type="monotoneX" dataKey="p90" name="Optimistic (P90)" stroke="#00FFB3" strokeWidth={2.5} fill="url(#gMC90)" dot={false}/>
+        <Area type="monotoneX" dataKey="p50" name="Base Case (P50)"  stroke="#FFD700" strokeWidth={3}   fill="url(#gMC50)" dot={false}/>
+        <Area type="monotoneX" dataKey="p10" name="Pessimistic (P10)"stroke="#FF3333" strokeWidth={2}   fill="url(#gMC10)" dot={false}/>
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -2242,6 +2242,7 @@ export default function App() {
   const [navLevel,setNavLevel] = useState({ level:"total", broker:null, fund:null });
   const [period,  setPeriod  ] = useState("1Y");
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const T = isDark ? DARK : LIGHT;
 
@@ -2342,6 +2343,40 @@ export default function App() {
             </div>
           </div>
 
+          {/* Main Analysis Tabs Row */}
+          <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:6,paddingTop:4,borderBottom:`1px solid ${T.border}`,marginBottom:0}}>
+            {/* Overview special button */}
+            <button onClick={()=>setActiveTab("overview")} style={{
+              display:"flex",alignItems:"center",gap:6,
+              padding:"8px 16px",borderRadius:10,border:`1px solid ${activeTab==="overview"?BRAND.gold+"55":T.border}`,
+              cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:700,
+              whiteSpace:"nowrap",flexShrink:0,
+              background:activeTab==="overview"?`linear-gradient(135deg,${BRAND.gold}22,${BRAND.gold}08)`:`${T.surface}`,
+              color:activeTab==="overview"?BRAND.gold:T.muted,
+              boxShadow:activeTab==="overview"?`0 0 12px ${BRAND.gold}22`:"none",
+              transition:"all 0.2s",
+            }}>📊 Overview</button>
+            {ANALYSIS_TABS.map(t=>{
+              const isA=activeTab===t.id;
+              const tabColors={"perf":BRAND.teal,"bench":BRAND.blue,"risk":BRAND.red,"corr":BRAND.amber,"div":BRAND.green,"proj":BRAND.purple,"mc":BRAND.purple,"snow":BRAND.cyan,"factor":BRAND.purple,"frontier":BRAND.teal,"ai":BRAND.amber};
+              const tc2=tabColors[t.id]||BRAND.gold;
+              return (
+                <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+                  display:"flex",alignItems:"center",gap:6,
+                  padding:"8px 16px",borderRadius:10,border:`1px solid ${isA?tc2+"55":T.border}`,
+                  cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:700,
+                  whiteSpace:"nowrap",flexShrink:0,
+                  background:isA?`linear-gradient(135deg,${tc2}22,${tc2}08)`:T.surface,
+                  color:isA?tc2:T.muted,
+                  boxShadow:isA?`0 0 12px ${tc2}22`:"none",
+                  transition:"all 0.2s",
+                }}>
+                  <span>{t.icon}</span><span>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* 4-Level Nav */}
           <div style={{display:"flex",gap:0,overflowX:"auto"}}>
             <button onClick={()=>setNavLevel({level:"total",broker:null,fund:null})} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",border:"none",cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:700,whiteSpace:"nowrap",background:navLevel.level==="total"?`${BRAND.gold}12`:"transparent",color:navLevel.level==="total"?BRAND.gold:T.muted,borderBottom:navLevel.level==="total"?`2px solid ${BRAND.gold}`:"2px solid transparent",transition:"all 0.2s"}}>
@@ -2407,19 +2442,14 @@ export default function App() {
             onBack={()=>setSelectedAsset(null)}
             onEdit={(h)=>{setSelectedAsset(null);setEditH(h);}}
           />
+        ) : activeTab==="overview" ? (
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <KPIRow holdings={visibleHoldings} T={T}/>
+            <PortfolioChart holdings={visibleHoldings} period={period} onPeriodChange={setPeriod} color={navColor} T={T} title={navLabel} sub={`${visibleHoldings.length} holdings`}/>
+            <HoldingsTable holdings={visibleHoldings} title={`${navLabel} — Holdings`} T={T} onEdit={setEditH} onRowClick={setSelectedAsset}/>
+          </div>
         ) : (
-          <>
-            <div style={{marginBottom:14}}>
-              <HoldingsTable
-                holdings={visibleHoldings}
-                title={`${navLabel} — Holdings`}
-                T={T}
-                onEdit={setEditH}
-                onRowClick={setSelectedAsset}
-              />
-            </div>
-            <AnalysisPanel holdings={visibleHoldings} T={T}/>
-          </>
+          <AnalysisPanel holdings={visibleHoldings} T={T} activeTab={activeTab} setActiveTab={setActiveTab} botMem={botMem} setBotMem={setBotMem}/>
         )}
 
 
