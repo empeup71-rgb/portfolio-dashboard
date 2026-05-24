@@ -1905,7 +1905,7 @@ const AGENTS = [
    insight:"Last report generated 7 days ago. Monthly summary ready for generation."},
 ];
 
-const AITab = ({ holdings, T, botMem, setBotMem }) => {
+const AITab = ({ holdings, T, botMem={sessionCount:1,chatHistory:[],learnedPreferences:{},lastVisit:null}, setBotMem=()=>{} }) => {
   const [sel,    setSel   ] = useState(null);
   const [chat,   setChat  ] = useState(false);
   const [input,  setInput ] = useState("");
@@ -2185,48 +2185,24 @@ const ANALYSIS_TABS = [
   { id:"ai",      label:"AI Intelligence",  icon:"🤖" },
 ];
 
-const AnalysisPanel = ({ holdings, T }) => {
-  const [activeTab, setActiveTab] = useState("perf");
-  const cur = ANALYSIS_TABS.find(t=>t.id===activeTab);
-
+const AnalysisPanel = ({ holdings, T, activeTab, botMem, setBotMem }) => {
   return (
-    <div style={{marginTop:16}}>
-      {/* Tab nav */}
-      <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.border}`,overflowX:"auto",marginBottom:20}}>
-        {ANALYSIS_TABS.map(t=>{
-          const isA = activeTab===t.id;
-          return (
-            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
-              display:"flex",alignItems:"center",gap:6,
-              padding:"9px 16px",border:"none",cursor:"pointer",
-              fontFamily:BRAND.display,fontSize:11,fontWeight:600,
-              whiteSpace:"nowrap",
-              background:isA?`${BRAND.gold}10`:"transparent",
-              color:isA?BRAND.gold:T.muted,
-              borderBottom:isA?`2px solid ${BRAND.gold}`:"2px solid transparent",
-              marginBottom:-1,transition:"all 0.2s",
-            }}>
-              <span>{t.icon}</span><span>{t.label}</span>
-            </button>
-          );
-        })}
-      </div>
-      <div style={{animation:"fadeIn 0.25s ease"}}>
-        {activeTab==="perf" && <PerformanceTab holdings={holdings} T={T}/>}
-        {activeTab==="bench"&& <BenchmarkTab   holdings={holdings} T={T}/>}
-        {activeTab==="risk" && <RiskTab         holdings={holdings} T={T}/>}
-        {activeTab==="corr" && <CorrelationsTab holdings={holdings} T={T}/>}
-        {activeTab==="div"  && <DividendsTab    holdings={holdings} T={T}/>}
-        {activeTab==="proj" && <ProjectionsTab  holdings={holdings} T={T}/>}
-        {activeTab==="mc"   && <MonteCarloTab   holdings={holdings} T={T}/>}
-        {activeTab==="snow"  && <SnowflakeTab    holdings={holdings} T={T}/>}
-        {activeTab==="factor"&& <FactorTab            holdings={holdings} T={T}/>}
-        {activeTab==="frontier"&&<EfficientFrontierTab holdings={holdings} T={T}/>}
-        {activeTab==="ai"      &&<AITab holdings={holdings} T={T} botMem={botMem} setBotMem={setBotMem}/>}
-      </div>
+    <div style={{animation:"fadeIn 0.25s ease"}}>
+      {activeTab==="perf"    && <PerformanceTab      holdings={holdings} T={T}/>}
+      {activeTab==="bench"   && <BenchmarkTab        holdings={holdings} T={T}/>}
+      {activeTab==="risk"    && <RiskTab             holdings={holdings} T={T}/>}
+      {activeTab==="corr"    && <CorrelationsTab     holdings={holdings} T={T}/>}
+      {activeTab==="div"     && <DividendsTab        holdings={holdings} T={T}/>}
+      {activeTab==="proj"    && <ProjectionsTab      holdings={holdings} T={T}/>}
+      {activeTab==="mc"      && <MonteCarloTab       holdings={holdings} T={T}/>}
+      {activeTab==="snow"    && <SnowflakeTab        holdings={holdings} T={T}/>}
+      {activeTab==="factor"  && <FactorTab           holdings={holdings} T={T}/>}
+      {activeTab==="frontier"&& <EfficientFrontierTab holdings={holdings} T={T}/>}
+      {activeTab==="ai"      && <AITab               holdings={holdings} T={T} botMem={botMem} setBotMem={setBotMem}/>}
     </div>
   );
 };
+
 
 // ═══════════════════════════════════════════════════════════════════
 // MAIN APP
@@ -2449,7 +2425,7 @@ export default function App() {
             <HoldingsTable holdings={visibleHoldings} title={`${navLabel} — Holdings`} T={T} onEdit={setEditH} onRowClick={setSelectedAsset}/>
           </div>
         ) : (
-          <AnalysisPanel holdings={visibleHoldings} T={T} activeTab={activeTab} setActiveTab={setActiveTab} botMem={botMem} setBotMem={setBotMem}/>
+          <AnalysisPanel holdings={visibleHoldings} T={T} activeTab={activeTab} botMem={botMem} setBotMem={setBotMem}/>
         )}
 
 
