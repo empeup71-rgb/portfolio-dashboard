@@ -2319,38 +2319,68 @@ export default function App() {
             </div>
           </div>
 
-          {/* Main Analysis Tabs Row */}
-          <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:6,paddingTop:4,borderBottom:`1px solid ${T.border}`,marginBottom:0}}>
-            {/* Overview special button */}
-            <button onClick={()=>setActiveTab("overview")} style={{
-              display:"flex",alignItems:"center",gap:6,
-              padding:"8px 16px",borderRadius:10,border:`1px solid ${activeTab==="overview"?BRAND.gold+"55":T.border}`,
-              cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:700,
-              whiteSpace:"nowrap",flexShrink:0,
-              background:activeTab==="overview"?`linear-gradient(135deg,${BRAND.gold}22,${BRAND.gold}08)`:`${T.surface}`,
-              color:activeTab==="overview"?BRAND.gold:T.muted,
-              boxShadow:activeTab==="overview"?`0 0 12px ${BRAND.gold}22`:"none",
-              transition:"all 0.2s",
-            }}>📊 Overview</button>
-            {ANALYSIS_TABS.map(t=>{
-              const isA=activeTab===t.id;
-              const tabColors={"perf":BRAND.teal,"bench":BRAND.blue,"risk":BRAND.red,"corr":BRAND.amber,"div":BRAND.green,"proj":BRAND.purple,"mc":BRAND.purple,"snow":BRAND.cyan,"factor":BRAND.purple,"frontier":BRAND.teal,"ai":BRAND.amber};
-              const tc2=tabColors[t.id]||BRAND.gold;
-              return (
-                <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
-                  display:"flex",alignItems:"center",gap:6,
-                  padding:"8px 16px",borderRadius:10,border:`1px solid ${isA?tc2+"55":T.border}`,
-                  cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:700,
-                  whiteSpace:"nowrap",flexShrink:0,
-                  background:isA?`linear-gradient(135deg,${tc2}22,${tc2}08)`:T.surface,
-                  color:isA?tc2:T.muted,
-                  boxShadow:isA?`0 0 12px ${tc2}22`:"none",
-                  transition:"all 0.2s",
-                }}>
-                  <span>{t.icon}</span><span>{t.label}</span>
-                </button>
-              );
-            })}
+          {/* Main Analysis Tabs — 2 Rows, Full Width */}
+          <div style={{borderBottom:`1px solid ${T.border}`,paddingBottom:0}}>
+            {/* Row 1 */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:3,padding:"4px 0 3px 0"}}>
+              {[
+                {id:"overview",  label:"Overview",     icon:"📊", color:BRAND.gold},
+                {id:"perf",      label:"Performance",  icon:"📈", color:BRAND.teal},
+                {id:"bench",     label:"Benchmark",    icon:"📐", color:BRAND.blue},
+                {id:"risk",      label:"Risk",         icon:"🛡", color:BRAND.red},
+                {id:"corr",      label:"Correlations", icon:"🔥", color:BRAND.amber},
+                {id:"div",       label:"Dividends",    icon:"💰", color:BRAND.green},
+              ].map(t=>{
+                const isA=activeTab===t.id;
+                return(
+                  <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+                    display:"flex",alignItems:"center",justifyContent:"center",gap:5,
+                    padding:"8px 4px",borderRadius:"8px 8px 0 0",border:"none",
+                    cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:700,
+                    background:isA?`linear-gradient(135deg,${t.color}25,${t.color}10)`:T.surface,
+                    color:isA?t.color:T.muted,
+                    borderBottom:isA?`3px solid ${t.color}`:`3px solid transparent`,
+                    boxShadow:isA?`inset 0 0 0 1px ${t.color}33`:`inset 0 0 0 1px ${T.border}`,
+                    transition:"all 0.18s",
+                  }}
+                    onMouseEnter={e=>{if(!isA){e.currentTarget.style.background=`${t.color}10`;e.currentTarget.style.color=t.color;}}}
+                    onMouseLeave={e=>{if(!isA){e.currentTarget.style.background=T.surface;e.currentTarget.style.color=T.muted;}}}>
+                    <span style={{fontSize:13}}>{t.icon}</span>
+                    <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Row 2 */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:3,padding:"3px 0 0 0"}}>
+              {[
+                {id:"proj",      label:"Projections",  icon:"🔮", color:BRAND.purple},
+                {id:"mc",        label:"Monte Carlo",  icon:"🎲", color:BRAND.purple},
+                {id:"snow",      label:"Snowflake",    icon:"❄️", color:BRAND.cyan},
+                {id:"factor",    label:"Factors",      icon:"⚖️", color:BRAND.purple},
+                {id:"frontier",  label:"Eff. Frontier",icon:"🎯", color:BRAND.teal},
+                {id:"ai",        label:"AI Intelligence",icon:"🤖",color:BRAND.amber},
+              ].map(t=>{
+                const isA=activeTab===t.id;
+                return(
+                  <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+                    display:"flex",alignItems:"center",justifyContent:"center",gap:5,
+                    padding:"8px 4px",borderRadius:"0 0 8px 8px",border:"none",
+                    cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:700,
+                    background:isA?`linear-gradient(135deg,${t.color}25,${t.color}10)`:T.surface,
+                    color:isA?t.color:T.muted,
+                    borderBottom:isA?`3px solid ${t.color}`:`3px solid transparent`,
+                    boxShadow:isA?`inset 0 0 0 1px ${t.color}33`:`inset 0 0 0 1px ${T.border}`,
+                    transition:"all 0.18s",
+                  }}
+                    onMouseEnter={e=>{if(!isA){e.currentTarget.style.background=`${t.color}10`;e.currentTarget.style.color=t.color;}}}
+                    onMouseLeave={e=>{if(!isA){e.currentTarget.style.background=T.surface;e.currentTarget.style.color=T.muted;}}}>
+                    <span style={{fontSize:13}}>{t.icon}</span>
+                    <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* 4-Level Nav */}
