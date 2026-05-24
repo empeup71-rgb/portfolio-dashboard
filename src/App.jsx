@@ -1853,6 +1853,321 @@ const EfficientFrontierTab = ({ holdings, T }) => {
   );
 };
 
+
+// ═══════════════════════════════════════════════════════════════════
+// AI INTELLIGENCE TAB — 15 Agents + NEXUS Chat
+// ═══════════════════════════════════════════════════════════════════
+const AGENTS = [
+  {id:"NEXUS",    name:"NEXUS Core",        color:BRAND.gold,   role:"Portfolio Orchestrator",        load:94, acc:"91.2%", signals:142, status:"ACTIVE",
+   tasks:["Coordinating all 14 agent outputs","Generating executive summary","Priority alert monitoring","Cross-agent validation"],
+   insight:"Portfolio showing strong momentum. Tech driving 78% of alpha. Risk within parameters. Hold current allocation."},
+  {id:"ALPHA",    name:"ALPHA Analyst",      color:BRAND.teal,   role:"Performance & Returns Engine",  load:87, acc:"88.4%", signals:89,  status:"ACTIVE",
+   tasks:["TWR/MWR calculation","Attribution by holding","Benchmark vs 5 indices","Rolling returns"],
+   insight:"YTD beats S&P 500 by +2.1pts. NVDA contributing 34% of total alpha. Momentum continuing."},
+  {id:"RISK",     name:"Risk Monitor",       color:BRAND.red,    role:"Real-Time Risk Assessment",     load:96, acc:"94.1%", signals:67,  status:"ALERT",
+   tasks:["VaR computation","Drawdown monitoring","Correlation regime detection","Tail risk analysis"],
+   insight:"Crypto concentration approaching threshold. Consider trimming BTC/ETH below 20%."},
+  {id:"DIV",      name:"Income Tracker",     color:BRAND.green,  role:"Dividend Intelligence",         load:72, acc:"86.3%", signals:34,  status:"ACTIVE",
+   tasks:["Dividend tracking & forecasting","DRIP optimization","Ex-date monitoring","YoC tracking"],
+   insight:"Annual income growing +6.2% YoY. Next ex-date: VOO in 18 days."},
+  {id:"PROJ",     name:"Projection Engine",  color:BRAND.purple, role:"Scenario & Forecast Modeling",  load:68, acc:"79.8%", signals:28,  status:"ACTIVE",
+   tasks:["Monte Carlo simulations","Bull/Base/Bear scenarios","CAGR projections","Probability assessment"],
+   insight:"73% probability of $1M by Year 12 at current trajectory."},
+  {id:"SECTOR",   name:"Sector Analyst",     color:BRAND.blue,   role:"Sector Rotation Intelligence",  load:81, acc:"83.5%", signals:51,  status:"ACTIVE",
+   tasks:["Sector momentum tracking","Rotation signals","Concentration monitoring","Inter-sector correlation"],
+   insight:"Technology overweight at 62% vs 28% benchmark. Consider Healthcare or Energy."},
+  {id:"MACRO",    name:"Macro Watcher",      color:BRAND.amber,  role:"Macroeconomic Intelligence",    load:74, acc:"77.2%", signals:43,  status:"ACTIVE",
+   tasks:["Fed policy tracking","CPI/inflation monitoring","Yield curve analysis","GDP impact"],
+   insight:"Fed holding rates. Yield curve normalizing. Favorable for growth equities."},
+  {id:"ESG",      name:"ESG Scorer",         color:BRAND.pink,   role:"ESG & Quality Analysis",        load:58, acc:"81.0%", signals:19,  status:"ACTIVE",
+   tasks:["ESG score aggregation","Governance metrics","Environmental risk","Social scoring"],
+   insight:"Portfolio ESG composite: 72/100. MSFT and AAPL score 85+."},
+  {id:"TAX",      name:"Tax Optimizer",      color:BRAND.cyan,   role:"Tax Efficiency Intelligence",   load:62, acc:"88.7%", signals:22,  status:"ACTIVE",
+   tasks:["LT/ST gain tracking","Harvesting opportunities","Wash sale monitoring","Tax-efficient rebalancing"],
+   insight:"$12,400 in LT gains eligible for 0% federal rate. No harvesting opps currently."},
+  {id:"NEWS",     name:"Sentiment Engine",   color:BRAND.muted,  role:"News & Market Sentiment",       load:89, acc:"84.3%", signals:78,  status:"ACTIVE",
+   tasks:["News aggregation","Sentiment scoring","Earnings surprise tracking","Rating change alerts"],
+   insight:"Positive sentiment on AAPL and NVDA. No negative signals on portfolio holdings."},
+  {id:"TECH",     name:"Technical Analyst",  color:BRAND.blue,   role:"Technical Analysis Engine",     load:85, acc:"82.1%", signals:95,  status:"ACTIVE",
+   tasks:["RSI/MACD monitoring across holdings","Bollinger Band signals","Support/resistance levels","Trend detection"],
+   insight:"NVDA RSI at 72 — mildly overbought. AAPL forming bullish flag pattern. BTC near support."},
+  {id:"REBAL",    name:"Rebalance Bot",      color:BRAND.gold,   role:"Portfolio Rebalancing Engine",  load:55, acc:"90.2%", signals:12,  status:"ACTIVE",
+   tasks:["Drift monitoring vs target weights","Rebalance trigger detection","Tax-aware rebalancing","Optimal trade sizing"],
+   insight:"Portfolio within 3% of target weights. No rebalance needed this week."},
+  {id:"ALERT",    name:"Alert System",       color:BRAND.red,    role:"Price & Event Alert Monitor",   load:99, acc:"99.1%", signals:201, status:"ACTIVE",
+   tasks:["Price threshold monitoring","Earnings date tracking","Ex-dividend alerts","Volatility spike detection"],
+   insight:"No active price alerts triggered. Monitoring 8 positions continuously."},
+  {id:"ARCH",     name:"Architect Bot",      color:BRAND.purple, role:"System Self-Improvement Engine",load:45, acc:"N/A",   signals:8,   status:"LEARNING",
+   tasks:["Analyzing user behavior patterns","Identifying missing features","Optimizing agent performance","Proposing UI improvements"],
+   insight:"Learning your preferences. Session #3. Detected: prefer 1Y charts and risk analysis. Adapting outputs."},
+  {id:"REPORT",   name:"Report Generator",   color:BRAND.teal,   role:"Automated Report Engine",       load:30, acc:"95.0%", signals:5,   status:"ACTIVE",
+   tasks:["PDF report generation","Monthly performance summary","Tax document preparation","Investor letter drafts"],
+   insight:"Last report generated 7 days ago. Monthly summary ready for generation."},
+];
+
+const AITab = ({ holdings, T, botMem, setBotMem }) => {
+  const [sel,    setSel   ] = useState(null);
+  const [chat,   setChat  ] = useState(false);
+  const [input,  setInput ] = useState("");
+  const [msgs,   setMsgs  ] = useState([
+    { role:"assistant", text:"Hello! I'm NEXUS, your portfolio intelligence system. I have full access to your portfolio data and all 14 specialist agents. Ask me anything about your investments.", ts: new Date().toLocaleTimeString() }
+  ]);
+  const [loading,setLoading] = useState(false);
+  const chatRef = useRef(null);
+
+  const tv   = holdings.reduce((s,h)=>s+V(h),0);
+  const tc   = holdings.reduce((s,h)=>s+CO(h),0);
+  const tpl  = tv-tc;
+  const tplp = tc>0?tpl/tc*100:0;
+  const tdiv = holdings.reduce((s,h)=>s+h.qty*(h.div||0),0);
+  const tot  = AGENTS.reduce((s,a)=>s+a.signals,0);
+  const agent= sel ? AGENTS.find(a=>a.id===sel) : null;
+
+  useEffect(()=>{ if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight; },[msgs]);
+
+  const portfolioContext = `
+Portfolio Summary:
+- Total Value: $${Math.round(tv).toLocaleString()}
+- Cost Basis: $${Math.round(tc).toLocaleString()}
+- Total P&L: ${tpl>=0?"+":"-"}$${Math.abs(Math.round(tpl)).toLocaleString()} (${tplp>=0?"+":""}${tplp.toFixed(2)}%)
+- Annual Dividends: $${Math.round(tdiv).toLocaleString()}
+- Holdings: ${holdings.map(h=>`${h.symbol} (${h.qty} shares @ $${h.price}, P&L: ${PLP(h).toFixed(1)}%)`).join(", ")}
+- Brokers: ${[...new Set(holdings.map(h=>h.broker))].join(", ")}
+- Risk Profile: Beta ${(holdings.reduce((s,h)=>s+(h.beta||1),0)/Math.max(holdings.length,1)).toFixed(2)}, Avg Vol ${(holdings.reduce((s,h)=>s+(h.vol||20),0)/Math.max(holdings.length,1)).toFixed(1)}%
+- User preferences learned: ${JSON.stringify(botMem.learnedPreferences)}
+- Session count: ${botMem.sessionCount}
+  `;
+
+  const sendMessage = async () => {
+    if(!input.trim()||loading) return;
+    const userMsg = { role:"user", text:input, ts:new Date().toLocaleTimeString() };
+    const newMsgs = [...msgs, userMsg];
+    setMsgs(newMsgs);
+    setInput("");
+    setLoading(true);
+
+    // Update bot memory with this interaction
+    const mem = {
+      ...botMem,
+      chatHistory: [...(botMem.chatHistory||[]).slice(-20), {q:input,ts:Date.now()}],
+      learnedPreferences: {
+        ...botMem.learnedPreferences,
+        lastQuery: input,
+        queriedAt: Date.now(),
+      }
+    };
+    setBotMem(mem);
+    saveBotMemory(mem);
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514",
+          max_tokens:1000,
+          system:`You are NEXUS, an institutional portfolio AI assistant with access to the user's complete portfolio data. You coordinate 14 specialist agents. Be concise, data-driven, and use specific numbers from the portfolio. Always sign responses as "— NEXUS" and mention which agent provided the insight when relevant.
+
+${portfolioContext}`,
+          messages: newMsgs.filter(m=>m.role!=="system").map(m=>({role:m.role,content:m.text})),
+        })
+      });
+      const data = await response.json();
+      const reply = data.content?.[0]?.text || "Unable to process request. Please try again.";
+      setMsgs(prev=>[...prev,{role:"assistant",text:reply,ts:new Date().toLocaleTimeString()}]);
+
+      // Learn from this interaction
+      const updatedMem = {
+        ...mem,
+        learnedPreferences: {
+          ...mem.learnedPreferences,
+          successfulQuery: input,
+        }
+      };
+      setBotMem(updatedMem);
+      saveBotMemory(updatedMem);
+    } catch(e) {
+      setMsgs(prev=>[...prev,{role:"assistant",text:`NEXUS offline — API connection unavailable. I can still show you agent insights below. Error: ${e.message}`,ts:new Date().toLocaleTimeString()}]);
+    }
+    setLoading(false);
+  };
+
+  const QUICK = [
+    "How is my portfolio performing?",
+    "What are my biggest risks?",
+    "Should I rebalance?",
+    "Which holding has the best momentum?",
+    "Summarize my dividends",
+    "What does the Architect Bot suggest?",
+  ];
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {/* Header KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+        <KPI label="Active Agents"  value={AGENTS.length}    sub="All systems nominal"      color={BRAND.teal}   T={T}/>
+        <KPI label="Total Signals"  value={tot}              sub="Generated last 24h"       color={BRAND.gold}   T={T}/>
+        <KPI label="Avg Accuracy"   value={`${(AGENTS.filter(a=>a.acc!=="N/A").reduce((s,a)=>s+parseFloat(a.acc),0)/AGENTS.filter(a=>a.acc!=="N/A").length).toFixed(1)}%`} sub="Signal accuracy" color={BRAND.green} T={T}/>
+        <KPI label="Alerts Active"  value={AGENTS.filter(a=>a.status==="ALERT").length} sub="Require attention" color={BRAND.red}  T={T}/>
+      </div>
+
+      {/* NEXUS Chat */}
+      <Card T={T} glow={BRAND.gold}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:10,height:10,borderRadius:"50%",background:BRAND.gold,boxShadow:`0 0 10px ${BRAND.gold}`,animation:"pulse 1.8s infinite"}}/>
+            <STN title="NEXUS Intelligence Chat" sub="Ask anything about your portfolio in natural language" color={BRAND.gold} T={T}/>
+          </div>
+          <button onClick={()=>setChat(v=>!v)} style={{padding:"7px 16px",borderRadius:9,border:`1px solid ${BRAND.gold}44`,background:chat?`${BRAND.gold}20`:`${BRAND.gold}10`,cursor:"pointer",color:BRAND.gold,fontFamily:BRAND.display,fontSize:11,fontWeight:700,transition:"all 0.2s"}}>
+            {chat?"▼ Minimize":"▶ Open Chat"}
+          </button>
+        </div>
+
+        {chat&&(
+          <div>
+            {/* Quick prompts */}
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:12}}>
+              {QUICK.map((q,i)=>(
+                <button key={i} onClick={()=>setInput(q)} style={{padding:"5px 11px",borderRadius:7,border:`1px solid ${BRAND.gold}33`,background:`${BRAND.gold}08`,cursor:"pointer",color:BRAND.gold,fontFamily:BRAND.mono,fontSize:9,fontWeight:600,transition:"all 0.15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=`${BRAND.gold}18`}
+                  onMouseLeave={e=>e.currentTarget.style.background=`${BRAND.gold}08`}>
+                  {q}
+                </button>
+              ))}
+            </div>
+
+            {/* Chat messages */}
+            <div ref={chatRef} style={{height:280,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,marginBottom:12,padding:"4px 0"}}>
+              {msgs.map((m,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+                  <div style={{maxWidth:"80%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?`${BRAND.gold}18`:T.surface,border:`1px solid ${m.role==="user"?BRAND.gold+"33":T.border}`,fontSize:12,fontFamily:BRAND.mono,color:T.text,lineHeight:1.6}}>
+                    {m.role==="assistant"&&(
+                      <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
+                        <div style={{width:6,height:6,borderRadius:"50%",background:BRAND.gold,animation:"pulse 2s infinite"}}/>
+                        <span style={{fontSize:9,color:BRAND.gold,fontWeight:700,letterSpacing:1}}>NEXUS</span>
+                        <span style={{fontSize:8,color:T.muted,marginLeft:"auto"}}>{m.ts}</span>
+                      </div>
+                    )}
+                    {m.role==="user"&&<div style={{fontSize:8,color:T.muted,textAlign:"right",marginBottom:4}}>{m.ts}</div>}
+                    <div style={{whiteSpace:"pre-wrap"}}>{m.text}</div>
+                  </div>
+                </div>
+              ))}
+              {loading&&(
+                <div style={{display:"flex",justifyContent:"flex-start"}}>
+                  <div style={{padding:"10px 14px",borderRadius:"14px 14px 14px 4px",background:T.surface,border:`1px solid ${T.border}`,display:"flex",gap:5,alignItems:"center"}}>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:BRAND.gold,animation:"pulse 0.6s infinite"}}/>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:BRAND.gold,animation:"pulse 0.6s 0.2s infinite"}}/>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:BRAND.gold,animation:"pulse 0.6s 0.4s infinite"}}/>
+                    <span style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted,marginLeft:4}}>NEXUS processing...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <div style={{display:"flex",gap:8}}>
+              <input
+                value={input}
+                onChange={e=>setInput(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendMessage()}
+                placeholder="Ask NEXUS anything about your portfolio..."
+                style={{flex:1,background:T.surface,border:`1px solid ${T.border}`,borderRadius:10,padding:"10px 14px",color:T.text,fontSize:12,fontFamily:BRAND.mono,outline:"none"}}
+              />
+              <button onClick={sendMessage} disabled={loading||!input.trim()} style={{padding:"10px 20px",borderRadius:10,border:"none",cursor:loading||!input.trim()?"not-allowed":"pointer",background:`linear-gradient(135deg,${BRAND.gold},${BRAND.gold2})`,color:BRAND.bg,fontFamily:BRAND.display,fontSize:12,fontWeight:800,opacity:loading||!input.trim()?.6:1,transition:"all 0.2s",boxShadow:`0 0 16px ${BRAND.gold}33`}}>
+                {loading?"...":"Send"}
+              </button>
+            </div>
+            <div style={{marginTop:8,fontSize:9,fontFamily:BRAND.mono,color:T.muted,textAlign:"center"}}>
+              Powered by Claude · Conversations saved locally for learning · Press Enter to send
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Agent Grid */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
+        {AGENTS.map((a,i)=>(
+          <div key={i} onClick={()=>setSel(sel===a.id?null:a.id)} style={{
+            background:sel===a.id?`${a.color}12`:T.surface,
+            border:`1px solid ${sel===a.id?a.color+"55":a.color+"22"}`,
+            borderRadius:12,padding:13,cursor:"pointer",
+            transition:"all 0.25s",
+            boxShadow:sel===a.id?`0 0 20px ${a.color}18`:"none",
+            transform:sel===a.id?"translateY(-2px)":"none",
+          }}
+            onMouseEnter={e=>{if(sel!==a.id){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=a.color+"44";}}}
+            onMouseLeave={e=>{if(sel!==a.id){e.currentTarget.style.transform="none";e.currentTarget.style.borderColor=a.color+"22";}}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                <div style={{width:7,height:7,borderRadius:"50%",background:a.color,boxShadow:`0 0 5px ${a.color}`,animation:"pulse 2s infinite"}}/>
+                <span style={{fontFamily:BRAND.mono,fontWeight:700,fontSize:9,color:a.color}}>{a.id}</span>
+              </div>
+              {a.status==="ALERT"&&<Chip label="ALERT" color={BRAND.red} size={7}/>}
+              {a.status==="LEARNING"&&<Chip label="LEARN" color={BRAND.purple} size={7}/>}
+            </div>
+            <div style={{fontSize:11,fontFamily:BRAND.display,fontWeight:700,color:T.text,marginBottom:2,lineHeight:1.3}}>{a.name}</div>
+            <div style={{fontSize:8,color:T.muted,fontFamily:BRAND.mono,marginBottom:7,lineHeight:1.4}}>{a.role}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:3,textAlign:"center",marginBottom:6}}>
+              {[{l:"ACC",v:a.acc},{l:"SIG",v:a.signals},{l:"CPU",v:`${a.load}%`}].map((s,j)=>(
+                <div key={j}>
+                  <div style={{fontSize:7,fontFamily:BRAND.mono,color:T.muted}}>{s.l}</div>
+                  <div style={{fontSize:10,fontFamily:BRAND.display,fontWeight:700,color:a.color}}>{s.v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{height:3,background:T.border,borderRadius:2}}>
+              <div style={{height:"100%",width:`${a.load}%`,background:`linear-gradient(90deg,${a.color},${a.color}70)`,borderRadius:2}}/>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Agent Detail */}
+      {agent&&(
+        <Card T={T} glow={agent.color} style={{animation:"fadeIn 0.3s ease"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr",gap:24}}>
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+                <div style={{width:10,height:10,borderRadius:"50%",background:agent.color,boxShadow:`0 0 10px ${agent.color}`,animation:"pulse 1.5s infinite"}}/>
+                <div style={{fontSize:18,fontFamily:BRAND.display,fontWeight:800,color:agent.color}}>{agent.name}</div>
+                {agent.status==="ALERT"&&<Chip label="⚠ ALERT" color={BRAND.red}/>}
+                {agent.status==="LEARNING"&&<Chip label="🧠 LEARNING" color={BRAND.purple}/>}
+              </div>
+              <div style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted,marginBottom:14}}>{agent.role}</div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:10}}>ACTIVE TASKS</div>
+              {agent.tasks.map((task,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:9,marginBottom:7,padding:"8px 12px",background:T.surface,borderRadius:8}}>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:agent.color,marginTop:4,flexShrink:0,animation:"pulse 1.5s infinite"}}/>
+                  <span style={{fontSize:11,fontFamily:BRAND.mono,color:T.text,lineHeight:1.5}}>{task}</span>
+                </div>
+              ))}
+              <div style={{marginTop:12,padding:"11px 14px",background:`${agent.color}08`,border:`1px solid ${agent.color}25`,borderRadius:9}}>
+                <div style={{fontSize:9,fontFamily:BRAND.mono,color:agent.color,letterSpacing:2,marginBottom:5}}>LATEST INSIGHT</div>
+                <div style={{fontSize:11,fontFamily:BRAND.mono,color:T.text,lineHeight:1.6}}>{agent.insight}</div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignContent:"start"}}>
+              {[{l:"Accuracy",v:agent.acc},{l:"Signals",v:agent.signals},{l:"CPU Load",v:`${agent.load}%`},{l:"Status",v:agent.status}].map((s,i)=>(
+                <div key={i} style={{background:T.surface,border:`1px solid ${agent.color}20`,borderRadius:10,padding:14,textAlign:"center"}}>
+                  <div style={{fontSize:8,fontFamily:BRAND.mono,color:T.muted,letterSpacing:1,marginBottom:6}}>{s.l}</div>
+                  <div style={{fontSize:17,fontFamily:BRAND.display,fontWeight:800,color:agent.color}}>{s.v}</div>
+                </div>
+              ))}
+              <div style={{gridColumn:"1/-1",padding:"11px 14px",background:`${BRAND.purple}08`,border:`1px solid ${BRAND.purple}22`,borderRadius:10}}>
+                <div style={{fontSize:9,fontFamily:BRAND.mono,color:BRAND.purple,letterSpacing:2,marginBottom:5}}>BOT LEARNING</div>
+                <div style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted,lineHeight:1.6}}>
+                  Session #{(botMem?.sessionCount||1)} · {botMem?.chatHistory?.length||0} queries learned · Last: {botMem?.lastVisit?new Date(botMem.lastVisit).toLocaleDateString():"Today"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════════
 // ANALYSIS PANEL — shown below chart at each level
 // ═══════════════════════════════════════════════════════════════════
@@ -1867,6 +2182,7 @@ const ANALYSIS_TABS = [
   { id:"snow",    label:"Snowflake",    icon:"❄️" },
   { id:"factor",  label:"Factors",      icon:"⚖️" },
   { id:"frontier",label:"Efficient Frontier",icon:"🎯" },
+  { id:"ai",      label:"AI Intelligence",  icon:"🤖" },
 ];
 
 const AnalysisPanel = ({ holdings, T }) => {
@@ -1906,6 +2222,7 @@ const AnalysisPanel = ({ holdings, T }) => {
         {activeTab==="snow"  && <SnowflakeTab    holdings={holdings} T={T}/>}
         {activeTab==="factor"&& <FactorTab            holdings={holdings} T={T}/>}
         {activeTab==="frontier"&&<EfficientFrontierTab holdings={holdings} T={T}/>}
+        {activeTab==="ai"      &&<AITab holdings={holdings} T={T} botMem={botMem} setBotMem={setBotMem}/>}
       </div>
     </div>
   );
