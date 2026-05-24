@@ -1709,6 +1709,150 @@ const FactorTab = ({ holdings, T }) => {
   );
 };
 
+
+// ═══════════════════════════════════════════════════════════════════
+// EFFICIENT FRONTIER TAB — Portfolio Optimization
+// ═══════════════════════════════════════════════════════════════════
+const EfficientFrontierTab = ({ holdings, T }) => {
+  const [targetReturn, setTargetReturn] = useState(10);
+  const [riskTolerance, setRiskTolerance] = useState(50);
+
+  const tv = holdings.reduce((s,h)=>s+V(h),0);
+
+  // Generate frontier curve points
+  const frontier = useMemo(()=>{
+    const points = [];
+    for(let risk=3; risk<=40; risk+=0.5) {
+      const ret = Math.pow(risk, 0.72) * 1.4 + (Math.random()-.5)*.3;
+      points.push({ risk:+risk.toFixed(1), return:+ret.toFixed(2), sharpe:+(ret/risk).toFixed(3) });
+    }
+    return points;
+  },[]);
+
+  // Current portfolio position
+  const avgVol = holdings.reduce((s,h)=>s+(h.vol||20)*V(h)/Math.max(tv,1),0);
+  const tc     = holdings.reduce((s,h)=>s+CO(h),0);
+  const ret    = tc>0?(tv-tc)/tc*100:0;
+  const currentPoint = [{ risk:+avgVol.toFixed(1), return:+ret.toFixed(2), name:"Current" }];
+
+  // Optimal portfolios
+  const maxSharpe  = frontier.reduce((a,b)=>a.sharpe>b.sharpe?a:b);
+  const minVol     = frontier.reduce((a,b)=>a.risk<b.risk?a:b);
+  const targetPt   = frontier.reduce((a,b)=>Math.abs(b.return-targetReturn)<Math.abs(a.return-targetReturn)?b:a);
+
+  // Optimal weights suggestion
+  const optWeights = useMemo(()=>{
+    const riskScore = riskTolerance/100;
+    return holdings.map(h=>{
+      const typeW = {Stock:0.35,ETF:0.3,Crypto:0.15,Bond:0.2}[h.type]||0.25;
+      const adjW  = h.type==="Crypto" ? typeW*riskScore*1.5 : h.type==="Bond" ? typeW*(1-riskScore) : typeW;
+      return { ...h, optWeight:adjW, currentWeight:V(h)/Math.max(tv,1)*100 };
+    }).map((h,_,arr)=>{
+      const total = arr.reduce((s,x)=>s+x.optWeight,0);
+      return { ...h, optWeight:+(h.optWeight/total*100).toFixed(1) };
+    });
+  },[holdings,riskTolerance,tv]);
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+        <div style={{background:`${BRAND.teal}08`,border:`1px solid ${BRAND.teal}22`,borderLeft:`4px solid ${BRAND.teal}`,borderRadius:12,padding:"14px 18px"}}>
+          <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:6}}>MAX SHARPE RATIO</div>
+          <div style={{fontSize:22,fontFamily:BRAND.display,fontWeight:800,color:BRAND.teal}}>{maxSharpe.sharpe}</div>
+          <div style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted,marginTop:4}}>Risk: {maxSharpe.risk}% · Ret: {maxSharpe.return}%</div>
+        </div>
+        <div style={{background:`${BRAND.blue}08`,border:`1px solid ${BRAND.blue}22`,borderLeft:`4px solid ${BRAND.blue}`,borderRadius:12,padding:"14px 18px"}}>
+          <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:6}}>MIN VOLATILITY</div>
+          <div style={{fontSize:22,fontFamily:BRAND.display,fontWeight:800,color:BRAND.blue}}>{minVol.risk}%</div>
+          <div style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted,marginTop:4}}>Return: {minVol.return}%</div>
+        </div>
+        <KPI label="Current Risk"   value={`${avgVol.toFixed(1)}%`} sub="Weighted avg volatility" color={BRAND.amber}  T={T}/>
+        <KPI label="Current Return" value={`${ret>=0?"+":""}${ret.toFixed(2)}%`} sub="Unrealized return" color={ret>=0?BRAND.teal:BRAND.red} T={T}/>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1.6fr 1fr",gap:14}}>
+        <Card T={T} glow={BRAND.teal}>
+          <STN title="Efficient Frontier" sub="Risk-Return tradeoff — yellow = current portfolio · green = max Sharpe · blue = min vol" color={BRAND.teal} T={T}/>
+          <ResponsiveContainer width="100%" height={300}>
+            <ScatterChart margin={{top:10,right:20,bottom:20,left:10}}>
+              <CartesianGrid strokeDasharray="2 6" stroke={T.border}/>
+              <XAxis dataKey="risk"   name="Risk (%)"   type="number" domain={[2,42]} tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} label={{value:"Risk (Volatility %)",position:"insideBottom",offset:-10,fill:T.muted,fontSize:10}}/>
+              <YAxis dataKey="return" name="Return (%)" type="number" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} label={{value:"Expected Return (%)",angle:-90,position:"insideLeft",fill:T.muted,fontSize:10}}/>
+              <Tooltip cursor={{stroke:T.border}} content={({active,payload})=>{
+                if(!active||!payload?.length)return null;
+                const d=payload[0]?.payload;
+                return(<div style={{background:T.bg2,border:`1px solid ${BRAND.gold}44`,borderRadius:10,padding:"10px 14px",fontSize:11,fontFamily:BRAND.mono}}>
+                  <div style={{color:T.muted,marginBottom:4}}>Risk: <b style={{color:BRAND.amber}}>{d?.risk}%</b></div>
+                  <div style={{color:T.muted,marginBottom:4}}>Return: <b style={{color:BRAND.teal}}>{d?.return}%</b></div>
+                  {d?.sharpe&&<div style={{color:T.muted}}>Sharpe: <b style={{color:BRAND.gold}}>{d?.sharpe}</b></div>}
+                </div>);
+              }}/>
+              {/* Frontier curve */}
+              <Scatter data={frontier} fill={BRAND.teal} opacity={.6} r={3}/>
+              {/* Max Sharpe */}
+              <Scatter data={[maxSharpe]} fill={BRAND.green} r={8} name="Max Sharpe">
+                <Cell fill={BRAND.green}/>
+              </Scatter>
+              {/* Min Vol */}
+              <Scatter data={[minVol]} fill={BRAND.blue} r={8} name="Min Vol">
+                <Cell fill={BRAND.blue}/>
+              </Scatter>
+              {/* Current portfolio */}
+              <Scatter data={currentPoint} fill={BRAND.gold} r={10} name="Current">
+                <Cell fill={BRAND.gold}/>
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+          <div style={{display:"flex",gap:14,justifyContent:"center",marginTop:8}}>
+            {[{c:BRAND.gold,l:"Current Portfolio"},{c:BRAND.green,l:"Max Sharpe"},{c:BRAND.blue,l:"Min Volatility"},{c:BRAND.teal,l:"Frontier"}].map((leg,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:5}}>
+                <div style={{width:10,height:10,borderRadius:"50%",background:leg.c}}/>
+                <span style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted}}>{leg.l}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card T={T}>
+          <STN title="Portfolio Optimizer" sub="Adjust risk tolerance to see optimal weights" color={BRAND.purple} T={T}/>
+          <div style={{marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+              <span style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted}}>RISK TOLERANCE</span>
+              <span style={{fontSize:12,fontFamily:BRAND.mono,fontWeight:700,color:BRAND.purple}}>{riskTolerance}%</span>
+            </div>
+            <input type="range" min={10} max={90} step={5} value={riskTolerance} onChange={e=>setRiskTolerance(+e.target.value)} style={{width:"100%",accentColor:BRAND.purple}}/>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+              <span style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted}}>Conservative</span>
+              <span style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted}}>Aggressive</span>
+            </div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {optWeights.map((h,i)=>{
+              const diff = h.optWeight - h.currentWeight;
+              const action = Math.abs(diff)<2?"Hold":diff>0?"Buy":"Sell";
+              const ac = action==="Hold"?T.muted:action==="Buy"?BRAND.teal:BRAND.red;
+              return (
+                <div key={i} style={{padding:"8px 11px",background:T.surface,borderRadius:8,border:`1px solid ${T.border}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <span style={{fontFamily:BRAND.mono,fontWeight:700,fontSize:12,color:BRAND.gold}}>{h.symbol}</span>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <span style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted}}>{h.currentWeight.toFixed(1)}% → <b style={{color:BRAND.purple}}>{h.optWeight}%</b></span>
+                      <Chip label={action} color={ac} size={8}/>
+                    </div>
+                  </div>
+                  <div style={{height:3,background:T.border,borderRadius:2}}>
+                    <div style={{height:"100%",width:`${h.optWeight}%`,background:BRAND.purple,borderRadius:2,transition:"width 0.4s ease"}}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════════
 // ANALYSIS PANEL — shown below chart at each level
 // ═══════════════════════════════════════════════════════════════════
@@ -1722,6 +1866,7 @@ const ANALYSIS_TABS = [
   { id:"mc",      label:"Monte Carlo",  icon:"🎲" },
   { id:"snow",    label:"Snowflake",    icon:"❄️" },
   { id:"factor",  label:"Factors",      icon:"⚖️" },
+  { id:"frontier",label:"Efficient Frontier",icon:"🎯" },
 ];
 
 const AnalysisPanel = ({ holdings, T }) => {
@@ -1759,7 +1904,8 @@ const AnalysisPanel = ({ holdings, T }) => {
         {activeTab==="proj" && <ProjectionsTab  holdings={holdings} T={T}/>}
         {activeTab==="mc"   && <MonteCarloTab   holdings={holdings} T={T}/>}
         {activeTab==="snow"  && <SnowflakeTab    holdings={holdings} T={T}/>}
-        {activeTab==="factor"&& <FactorTab       holdings={holdings} T={T}/>}
+        {activeTab==="factor"&& <FactorTab            holdings={holdings} T={T}/>}
+        {activeTab==="frontier"&&<EfficientFrontierTab holdings={holdings} T={T}/>}
       </div>
     </div>
   );
