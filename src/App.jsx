@@ -61,15 +61,29 @@ const TYPE_COLOR   = { "Stock": BRAND.blue, "ETF": BRAND.purple, "Crypto": BRAND
 // PORTFOLIO DATA
 // ═══════════════════════════════════════════════════════════════════
 const INITIAL_HOLDINGS = [
-  { id:"aapl", symbol:"AAPL", name:"Apple Inc.",      broker:"Robinhood",   fund:"Growth Stocks", type:"Stock",  sector:"Technology", qty:45,   price:213.50, avgCost:178.20, beta:1.18, div:0.96,  vol:18.4, notes:"" },
-  { id:"nvda", symbol:"NVDA", name:"NVIDIA Corp.",    broker:"Robinhood",   fund:"Growth Stocks", type:"Stock",  sector:"Technology", qty:18,   price:875.20, avgCost:612.40, beta:1.72, div:0.04,  vol:41.3, notes:"" },
-  { id:"btc",  symbol:"BTC",  name:"Bitcoin",         broker:"Robinhood",   fund:"Crypto",        type:"Crypto", sector:"Crypto",     qty:0.42, price:67840,  avgCost:52000,  beta:1.85, div:0,     vol:62.1, notes:"" },
-  { id:"eth",  symbol:"ETH",  name:"Ethereum",        broker:"Robinhood",   fund:"Crypto",        type:"Crypto", sector:"Crypto",     qty:3.2,  price:3640,   avgCost:3100,   beta:1.61, div:0,     vol:58.4, notes:"" },
-  { id:"voo",  symbol:"VOO",  name:"Vanguard S&P500", broker:"Fidelity",    fund:"Index ETFs",    type:"ETF",    sector:"Broad Mkt",  qty:28,   price:498.20, avgCost:441.30, beta:1.00, div:6.58,  vol:14.2, notes:"" },
-  { id:"msft", symbol:"MSFT", name:"Microsoft Corp.", broker:"Fidelity",    fund:"Blue Chip",     type:"Stock",  sector:"Technology", qty:22,   price:418.30, avgCost:380.10, beta:0.92, div:3.00,  vol:19.8, notes:"" },
-  { id:"spy",  symbol:"SPY",  name:"SPDR S&P 500",   broker:"Fidelity",    fund:"Index ETFs",    type:"ETF",    sector:"Broad Mkt",  qty:15,   price:529.80, avgCost:498.60, beta:1.00, div:6.81,  vol:14.1, notes:"" },
-  { id:"tip",  symbol:"TIP",  name:"iShares TIPS",   broker:"TSP Federal", fund:"Gov. Bonds",    type:"Bond",   sector:"Fixed Inc.", qty:120,  price:107.40, avgCost:105.20, beta:0.12, div:4.11,  vol:6.1,  notes:"" },
+  { id:"aapl", symbol:"AAPL", name:"Apple Inc.",      broker:"Robinhood",   portfolio:"Roth IRA",   type:"Stock",  sector:"Technology", qty:45,   price:213.50, avgCost:178.20, beta:1.18, div:0.96,  vol:18.4, notes:"" },
+  { id:"nvda", symbol:"NVDA", name:"NVIDIA Corp.",    broker:"Robinhood",   portfolio:"Roth IRA",   type:"Stock",  sector:"Technology", qty:18,   price:875.20, avgCost:612.40, beta:1.72, div:0.04,  vol:41.3, notes:"" },
+  { id:"btc",  symbol:"BTC",  name:"Bitcoin",         broker:"Robinhood",   portfolio:"Investing",  type:"Crypto", sector:"Crypto",     qty:0.42, price:67840,  avgCost:52000,  beta:1.85, div:0,     vol:62.1, notes:"" },
+  { id:"eth",  symbol:"ETH",  name:"Ethereum",        broker:"Robinhood",   portfolio:"Investing",  type:"Crypto", sector:"Crypto",     qty:3.2,  price:3640,   avgCost:3100,   beta:1.61, div:0,     vol:58.4, notes:"" },
+  { id:"voo",  symbol:"VOO",  name:"Vanguard S&P500", broker:"Fidelity",    portfolio:"401k",       type:"ETF",    sector:"Broad Mkt",  qty:28,   price:498.20, avgCost:441.30, beta:1.00, div:6.58,  vol:14.2, notes:"" },
+  { id:"msft", symbol:"MSFT", name:"Microsoft Corp.", broker:"Fidelity",    portfolio:"401k",       type:"Stock",  sector:"Technology", qty:22,   price:418.30, avgCost:380.10, beta:0.92, div:3.00,  vol:19.8, notes:"" },
+  { id:"spy",  symbol:"SPY",  name:"SPDR S&P 500",   broker:"Fidelity",    portfolio:"Brokerage",  type:"ETF",    sector:"Broad Mkt",  qty:15,   price:529.80, avgCost:498.60, beta:1.00, div:6.81,  vol:14.1, notes:"" },
+  { id:"tip",  symbol:"TIP",  name:"iShares TIPS",   broker:"TSP Federal", portfolio:"Retirement", type:"Bond",   sector:"Fixed Inc.", qty:120,  price:107.40, avgCost:105.20, beta:0.12, div:4.11,  vol:6.1,  notes:"" },
 ];
+
+// Price lookup table for auto-price feature
+const PRICE_DB = {
+  "AAPL":213.50,"MSFT":418.30,"NVDA":875.20,"GOOGL":175.40,"AMZN":198.60,
+  "META":512.30,"TSLA":248.70,"BRK.B":411.20,"JPM":218.40,"V":279.30,
+  "UNH":542.10,"JNJ":147.80,"WMT":81.20,"PG":168.40,"MA":486.20,
+  "HD":385.60,"CVX":152.30,"LLY":792.40,"ABBV":178.90,"MRK":124.60,
+  "KO":62.40,"PEP":165.30,"COST":882.10,"TMO":567.80,"ACN":312.40,
+  "VOO":498.20,"SPY":529.80,"QQQ":448.60,"IVV":531.20,"VTI":241.80,
+  "VEA":48.30,"VWO":42.60,"BND":72.40,"TIP":107.40,"AGG":98.20,
+  "GLD":221.40,"SLV":25.80,"IAU":22.14,
+  "BTC":67840,"ETH":3640,"BNB":412,"SOL":148,"ADA":0.62,
+  "DOGE":0.18,"XRP":0.72,"AVAX":38.40,"DOT":8.20,"MATIC":0.92,
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // BOT LEARNING SYSTEM
@@ -341,7 +355,7 @@ const HoldingsTable = ({ holdings, title, T, onEdit, onRowClick }) => {
                   <td style={{padding:"9px 10px",fontWeight:700,color:BRAND.gold,fontFamily:BRAND.mono,fontSize:13}}>{h.symbol}</td>
                   <td style={{padding:"9px 10px",color:T.muted,fontSize:11}}>{h.name}</td>
                   <td style={{padding:"9px 10px"}}><Chip label={h.broker.split(" ")[0]} color={BROKER_COLOR[h.broker]||BRAND.muted}/></td>
-                  <td style={{padding:"9px 10px",fontSize:11,color:T.muted}}>{h.fund}</td>
+                  <td style={{padding:"9px 10px",fontSize:11,color:T.muted}}>{h.portfolio}</td>
                   <td style={{padding:"9px 10px"}}><Chip label={h.type} color={TYPE_COLOR[h.type]||BRAND.muted}/></td>
                   <td style={{padding:"9px 10px",fontFamily:BRAND.mono,color:T.muted}}>{h.qty}</td>
                   <td style={{padding:"9px 10px",fontFamily:BRAND.mono,fontWeight:600,color:T.text}}>${h.price.toLocaleString()}</td>
@@ -384,13 +398,32 @@ const HoldingsTable = ({ holdings, title, T, onEdit, onRowClick }) => {
 // ═══════════════════════════════════════════════════════════════════
 // ADD / EDIT POSITION MODAL
 // ═══════════════════════════════════════════════════════════════════
-const EditModal = ({ holding, onSave, onDelete, onClose, T, brokers }) => {
+const EditModal = ({ holding, onSave, onDelete, onClose, T, allHoldings=[] }) => {
   const isNew = !holding?.id;
-  const [form, setForm] = useState(holding || { symbol:"", name:"", broker:"Robinhood", fund:"Growth Stocks", type:"Stock", sector:"Technology", qty:"", price:"", avgCost:"", div:0, beta:1, vol:20, notes:"" });
+  const [form, setForm] = useState(holding || { symbol:"", name:"", broker:"Robinhood", portfolio:"Roth IRA", type:"Stock", sector:"Technology", qty:"", price:"", avgCost:"", div:0, beta:1, vol:20, notes:"" });
+  const [priceStatus, setPriceStatus] = useState("");
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
+
+  const lookupPrice = (ticker) => {
+    const sym = ticker.toUpperCase().trim();
+    set("symbol", sym);
+    const known = PRICE_DB[sym];
+    if(known) {
+      set("price", known);
+      setPriceStatus("✅ $" + known.toLocaleString());
+      const names = {"AAPL":"Apple Inc.","MSFT":"Microsoft Corp.","NVDA":"NVIDIA Corp.","GOOGL":"Alphabet Inc.","AMZN":"Amazon.com","META":"Meta Platforms","TSLA":"Tesla Inc.","VOO":"Vanguard S&P500 ETF","SPY":"SPDR S&P 500 ETF","QQQ":"Invesco QQQ ETF","BTC":"Bitcoin","ETH":"Ethereum","TIP":"iShares TIPS Bond ETF","BND":"Vanguard Bond ETF","GLD":"SPDR Gold Shares","VTI":"Vanguard Total Mkt ETF","JPM":"JPMorgan Chase","V":"Visa Inc.","MA":"Mastercard"};
+      if(names[sym] && !form.name) set("name", names[sym]);
+    } else if(sym.length>=2) {
+      setPriceStatus("⚠️ Enter price manually");
+    } else {
+      setPriceStatus("");
+    }
+  };
+
+  const existingPortfolios = [...new Set(allHoldings.filter(h=>h.broker===form.broker).map(h=>h.portfolio))];
+
   const inp = { background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:"8px 12px", color:T.text, fontSize:12, outline:"none", fontFamily:BRAND.mono, width:"100%", transition:"border 0.2s" };
   const lbl = { fontSize:9, fontFamily:BRAND.mono, color:T.muted, letterSpacing:2, marginBottom:5, display:"block" };
-
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
       <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:700,background:T.bg2,border:`1px solid ${BRAND.gold}44`,borderRadius:18,padding:28,boxShadow:`0 0 60px ${BRAND.gold}14`}}>
@@ -399,7 +432,11 @@ const EditModal = ({ holding, onSave, onDelete, onClose, T, brokers }) => {
           <button onClick={onClose} style={{width:30,height:30,borderRadius:7,border:`1px solid ${T.border}`,background:T.surface,cursor:"pointer",color:T.muted,fontSize:15}}>✕</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
-          <div><label style={lbl}>TICKER</label><input value={form.symbol} onChange={e=>set("symbol",e.target.value.toUpperCase())} placeholder="AAPL" style={{...inp,fontSize:16,fontWeight:700,color:BRAND.gold,letterSpacing:2}}/></div>
+          <div>
+            <label style={lbl}>TICKER</label>
+            <input value={form.symbol} onChange={e=>lookupPrice(e.target.value)} placeholder="AAPL, BTC, VOO..." style={{...inp,fontSize:16,fontWeight:700,color:BRAND.gold,letterSpacing:2}}/>
+            {priceStatus&&<div style={{fontSize:10,fontFamily:BRAND.mono,color:priceStatus.startsWith("✅")?BRAND.teal:BRAND.amber,marginTop:4}}>{priceStatus}</div>}
+          </div>
           <div><label style={lbl}>NAME</label><input value={form.name} onChange={e=>set("name",e.target.value)} placeholder="Apple Inc." style={inp}/></div>
           <div><label style={lbl}>TYPE</label>
             <select value={form.type} onChange={e=>set("type",e.target.value)} style={{...inp,cursor:"pointer"}}>
@@ -416,7 +453,7 @@ const EditModal = ({ holding, onSave, onDelete, onClose, T, brokers }) => {
               {["Robinhood","Fidelity","TSP Federal"].map(b=><option key={b}>{b}</option>)}
             </select>
           </div>
-          <div><label style={lbl}>FUND / PORTFOLIO</label><input value={form.fund} onChange={e=>set("fund",e.target.value)} placeholder="Growth Stocks" style={inp}/></div>
+          <div><label style={lbl}>FUND / PORTFOLIO</label><input value={form.portfolio} onChange={e=>set("portfolio",e.target.value)} placeholder="Roth IRA, 401k, Investing..." style={inp}/></div>
           <div><label style={lbl}>SECTOR</label><input value={form.sector} onChange={e=>set("sector",e.target.value)} placeholder="Technology" style={inp}/></div>
           <div style={{gridColumn:"1/-1"}}><label style={lbl}>NOTES</label><input value={form.notes} onChange={e=>set("notes",e.target.value)} placeholder="Optional notes about this position..." style={inp}/></div>
         </div>
@@ -1934,8 +1971,8 @@ Portfolio Summary:
 - Holdings: ${holdings.map(h=>`${h.symbol} (${h.qty} shares @ $${h.price}, P&L: ${PLP(h).toFixed(1)}%)`).join(", ")}
 - Brokers: ${[...new Set(holdings.map(h=>h.broker))].join(", ")}
 - Risk Profile: Beta ${(holdings.reduce((s,h)=>s+(h.beta||1),0)/Math.max(holdings.length,1)).toFixed(2)}, Avg Vol ${(holdings.reduce((s,h)=>s+(h.vol||20),0)/Math.max(holdings.length,1)).toFixed(1)}%
-- User preferences learned: ${JSON.stringify(botMem.learnedPreferences)}
-- Session count: ${botMem.sessionCount}
+- User preferences learned: ${JSON.stringify((botMem?.learnedPreferences||{}))}
+- Session count: ${(botMem?.sessionCount||1)}
   `;
 
   const sendMessage = async () => {
@@ -1949,9 +1986,9 @@ Portfolio Summary:
     // Update bot memory with this interaction
     const mem = {
       ...botMem,
-      chatHistory: [...(botMem.chatHistory||[]).slice(-20), {q:input,ts:Date.now()}],
+      chatHistory: [...((botMem?.chatHistory||[])||[]).slice(-20), {q:input,ts:Date.now()}],
       learnedPreferences: {
-        ...botMem.learnedPreferences,
+        ...(botMem?.learnedPreferences||{}),
         lastQuery: input,
         queriedAt: Date.now(),
       }
@@ -2157,7 +2194,7 @@ ${portfolioContext}`,
               <div style={{gridColumn:"1/-1",padding:"11px 14px",background:`${BRAND.purple}08`,border:`1px solid ${BRAND.purple}22`,borderRadius:10}}>
                 <div style={{fontSize:9,fontFamily:BRAND.mono,color:BRAND.purple,letterSpacing:2,marginBottom:5}}>BOT LEARNING</div>
                 <div style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted,lineHeight:1.6}}>
-                  Session #{(botMem?.sessionCount||1)} · {botMem?.chatHistory?.length||0} queries learned · Last: {botMem?.lastVisit?new Date(botMem.lastVisit).toLocaleDateString():"Today"}
+                  Session #{(botMem?.sessionCount||1)} · {botMem?.chatHistory?.length||0} queries learned · Last: {botMem?.lastVisit?new Date((botMem?.lastVisit||null)).toLocaleDateString():"Today"}
                 </div>
               </div>
             </div>
@@ -2238,7 +2275,7 @@ export default function App() {
   },[TV]);
 
   useEffect(()=>{
-    const mem = {...botMem, sessionCount: botMem.sessionCount+1, lastVisit: new Date().toISOString() };
+    const mem = {...botMem, sessionCount: (botMem?.sessionCount||1)+1, lastVisit: new Date().toISOString() };
     setBotMem(mem); saveBotMemory(mem);
   },[]);
 
@@ -2252,10 +2289,10 @@ export default function App() {
   const deleteHolding = id => { setHoldings(prev=>prev.filter(x=>x.id!==id)); setEditH(null); };
 
   const brokerNames = [...new Set(holdings.map(h=>h.broker))];
-  const fundNames   = broker => [...new Set(holdings.filter(h=>h.broker===broker).map(h=>h.fund))];
+  const fundNames   = broker => [...new Set(holdings.filter(h=>h.broker===broker).map(h=>h.portfolio))];
 
   const visibleHoldings = useMemo(()=>{
-    if(navLevel.level==="fund")   return holdings.filter(h=>h.broker===navLevel.broker&&h.fund===navLevel.fund);
+    if(navLevel.level==="portfolio")   return holdings.filter(h=>h.broker===navLevel.broker&&h.portfolio===navLevel.fund);
     if(navLevel.level==="broker") return holdings.filter(h=>h.broker===navLevel.broker);
     return holdings;
   },[holdings,navLevel]);
@@ -2383,31 +2420,46 @@ export default function App() {
             </div>
           </div>
 
-          {/* 4-Level Nav */}
-          <div style={{display:"flex",gap:0,overflowX:"auto"}}>
-            <button onClick={()=>setNavLevel({level:"total",broker:null,fund:null})} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",border:"none",cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:700,whiteSpace:"nowrap",background:navLevel.level==="total"?`${BRAND.gold}12`:"transparent",color:navLevel.level==="total"?BRAND.gold:T.muted,borderBottom:navLevel.level==="total"?`2px solid ${BRAND.gold}`:"2px solid transparent",transition:"all 0.2s"}}>
-              📊 Total Portfolio <span style={{fontSize:8,background:`${BRAND.gold}20`,color:BRAND.gold,borderRadius:4,padding:"1px 5px",fontFamily:BRAND.mono}}>{holdings.length}</span>
+          {/* Portfolio Navigator — Total > Broker > Portfolio */}
+          <div style={{display:"flex",alignItems:"center",gap:0,paddingTop:4,paddingBottom:2,overflowX:"auto",flexWrap:"nowrap"}}>
+            {/* Total */}
+            <button onClick={()=>setNavLevel({level:"total",broker:null,fund:null})} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 14px",border:"none",cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:700,whiteSpace:"nowrap",background:navLevel.level==="total"?`${BRAND.gold}12`:"transparent",color:navLevel.level==="total"?BRAND.gold:T.muted,borderBottom:navLevel.level==="total"?`2px solid ${BRAND.gold}`:"2px solid transparent",transition:"all 0.2s"}}>
+              🌐 All Portfolios <span style={{fontSize:8,background:`${BRAND.gold}20`,color:BRAND.gold,borderRadius:4,padding:"1px 5px",fontFamily:BRAND.mono}}>{holdings.length}</span>
             </button>
-            {navLevel.level!=="total"&&<div style={{display:"flex",alignItems:"center",padding:"0 6px",color:T.muted,fontSize:14}}>›</div>}
+
+            <span style={{color:T.muted,fontSize:14,padding:"0 4px",flexShrink:0}}>›</span>
+
+            {/* Brokers */}
             {brokerNames.map(broker=>{
               const bc=BROKER_COLOR[broker]||BRAND.gold;
               const bh=holdings.filter(h=>h.broker===broker);
               const isA=navLevel.broker===broker;
-              return <button key={broker} onClick={()=>setNavLevel({level:"broker",broker,fund:null})} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 15px",border:"none",cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:600,whiteSpace:"nowrap",background:isA?`${bc}12`:"transparent",color:isA?bc:T.muted,borderBottom:isA?`2px solid ${bc}`:"2px solid transparent",transition:"all 0.2s"}}>
-                <div style={{width:7,height:7,borderRadius:"50%",background:bc}}/>{broker.split(" ")[0]} <span style={{fontSize:8,background:`${bc}20`,color:bc,borderRadius:4,padding:"1px 5px",fontFamily:BRAND.mono}}>{bh.length}</span>
-              </button>;
+              return(
+                <button key={broker} onClick={()=>setNavLevel({level:"broker",broker,fund:null})} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 13px",border:"none",cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:600,whiteSpace:"nowrap",background:isA?`${bc}12`:"transparent",color:isA?bc:T.muted,borderBottom:isA?`2px solid ${bc}`:"2px solid transparent",transition:"all 0.2s"}}>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:bc,boxShadow:isA?`0 0 6px ${bc}`:""}}/>
+                  {broker.split(" ")[0]}
+                  <span style={{fontSize:8,background:`${bc}20`,color:bc,borderRadius:4,padding:"1px 5px",fontFamily:BRAND.mono}}>{bh.length}</span>
+                </button>
+              );
             })}
+
+            {/* Portfolios under selected broker */}
             {navLevel.broker&&<>
-              <div style={{display:"flex",alignItems:"center",padding:"0 6px",color:T.muted,fontSize:14}}>›</div>
-              {fundNames(navLevel.broker).map(fund=>{
+              <span style={{color:T.muted,fontSize:14,padding:"0 4px",flexShrink:0}}>›</span>
+              {fundNames(navLevel.broker).map(port=>{
                 const bc=BROKER_COLOR[navLevel.broker]||BRAND.gold;
-                const fh=holdings.filter(h=>h.broker===navLevel.broker&&h.fund===fund);
-                const isA=navLevel.fund===fund;
-                return <button key={fund} onClick={()=>setNavLevel(n=>({...n,level:"fund",fund}))} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 14px",border:"none",cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:600,whiteSpace:"nowrap",background:isA?`${bc}18`:"transparent",color:isA?bc:T.muted,borderBottom:isA?`2px solid ${bc}`:"2px solid transparent",transition:"all 0.2s",opacity:.85}}>
-                  <div style={{width:6,height:6,borderRadius:2,background:bc}}/>{fund} <span style={{fontSize:8,background:`${bc}15`,color:bc,borderRadius:4,padding:"1px 5px",fontFamily:BRAND.mono}}>{fh.length}</span>
-                </button>;
+                const ph=holdings.filter(h=>h.broker===navLevel.broker&&h.portfolio===port);
+                const isA=navLevel.fund===port;
+                return(
+                  <button key={port} onClick={()=>setNavLevel(n=>({...n,level:"fund",fund:port}))} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",border:"none",cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:600,whiteSpace:"nowrap",background:isA?`${bc}18`:"transparent",color:isA?bc:T.muted,borderBottom:isA?`2px solid ${bc}`:"2px solid transparent",transition:"all 0.2s",opacity:.9}}>
+                    <div style={{width:6,height:6,borderRadius:2,background:bc}}/>
+                    {port}
+                    <span style={{fontSize:8,background:`${bc}18`,color:bc,borderRadius:4,padding:"1px 5px",fontFamily:BRAND.mono}}>{ph.length}</span>
+                  </button>
+                );
               })}
             </>}
+          </div>
           </div>
         </div>
       </div>
@@ -2418,7 +2470,7 @@ export default function App() {
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,fontSize:11,fontFamily:BRAND.mono,color:T.muted}}>
           <span style={{color:BRAND.gold,cursor:"pointer"}} onClick={()=>setNavLevel({level:"total",broker:null,fund:null})}>Total</span>
           {navLevel.broker&&<><span>›</span><span style={{color:BROKER_COLOR[navLevel.broker]||BRAND.gold,cursor:"pointer"}} onClick={()=>setNavLevel(n=>({...n,level:"broker",fund:null}))}>{navLevel.broker}</span></>}
-          {navLevel.fund&&<><span>›</span><span style={{color:navColor}}>{navLevel.fund}</span></>}
+          {navLevel.fund&&<><span>›</span><span style={{color:navColor}}>{navLevel.fund}</span> <span style={{color:T.muted,fontSize:9}}>(portfolio)</span></>}
           <span style={{marginLeft:"auto"}}>{visibleHoldings.length} holdings · <b style={{color:navColor}}>${Math.round(navTV).toLocaleString()}</b> · <b style={{color:navTPL>=0?BRAND.teal:BRAND.red}}>{navTPL>=0?"+":"-"}${Math.abs(Math.round(navTPL)).toLocaleString()}</b></span>
         </div>
 
@@ -2472,6 +2524,7 @@ export default function App() {
           onDelete={deleteHolding}
           onClose={()=>{setEditH(null);setShowAdd(false);}}
           T={T}
+          allHoldings={holdings}
         />
       )}
     </div>
