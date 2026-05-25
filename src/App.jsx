@@ -71,18 +71,58 @@ const INITIAL_HOLDINGS = [
   { id:"tip",  symbol:"TIP",  name:"iShares TIPS",   broker:"TSP Federal", portfolio:"Retirement", type:"Bond",   sector:"Fixed Inc.", qty:120,  price:107.40, avgCost:105.20, beta:0.12, div:4.11,  vol:6.1,  notes:"" },
 ];
 
-// Price lookup table for auto-price feature
+// Price lookup table — 60+ tickers with auto-price
 const PRICE_DB = {
+  // Mega Cap Tech
   "AAPL":213.50,"MSFT":418.30,"NVDA":875.20,"GOOGL":175.40,"AMZN":198.60,
-  "META":512.30,"TSLA":248.70,"BRK.B":411.20,"JPM":218.40,"V":279.30,
-  "UNH":542.10,"JNJ":147.80,"WMT":81.20,"PG":168.40,"MA":486.20,
-  "HD":385.60,"CVX":152.30,"LLY":792.40,"ABBV":178.90,"MRK":124.60,
-  "KO":62.40,"PEP":165.30,"COST":882.10,"TMO":567.80,"ACN":312.40,
+  "META":512.30,"TSLA":248.70,"ORCL":142.80,"ADBE":448.20,"CRM":312.40,
+  "INTC":38.20,"AMD":168.40,"QCOM":198.60,"AVGO":1842.30,"TXN":198.40,
+  // Blue Chips
+  "BRK.B":411.20,"JPM":218.40,"V":279.30,"MA":486.20,"BAC":38.40,
+  "WFC":58.20,"GS":498.60,"MS":112.40,"UNH":542.10,"JNJ":147.80,
+  "WMT":81.20,"PG":168.40,"HD":385.60,"CVX":152.30,"LLY":792.40,
+  "ABBV":178.90,"MRK":124.60,"KO":62.40,"PEP":165.30,"COST":882.10,
+  "TMO":567.80,"ACN":312.40,"MCD":298.40,"NKE":74.20,"DIS":112.40,
+  "NFLX":648.20,"PYPL":68.40,"UBER":78.20,"ABNB":142.60,"SHOP":82.40,
+  // ETFs
   "VOO":498.20,"SPY":529.80,"QQQ":448.60,"IVV":531.20,"VTI":241.80,
-  "VEA":48.30,"VWO":42.60,"BND":72.40,"TIP":107.40,"AGG":98.20,
-  "GLD":221.40,"SLV":25.80,"IAU":22.14,
+  "VEA":48.30,"VWO":42.60,"VIG":198.40,"SCHD":82.40,"JEPI":58.20,
+  "ARKK":48.20,"XLK":212.40,"XLF":42.80,"XLV":148.60,"XLE":88.40,
+  // Bonds
+  "BND":72.40,"TIP":107.40,"AGG":98.20,"TLT":92.40,"IEF":98.60,
+  "SHY":82.40,"VCIT":78.20,"VCSH":76.40,"HYG":78.20,"LQD":108.40,
+  // Commodities
+  "GLD":221.40,"SLV":25.80,"IAU":22.14,"GDX":38.20,"PDBC":18.40,
+  // Crypto
   "BTC":67840,"ETH":3640,"BNB":412,"SOL":148,"ADA":0.62,
   "DOGE":0.18,"XRP":0.72,"AVAX":38.40,"DOT":8.20,"MATIC":0.92,
+  "LINK":14.80,"UNI":9.40,"ATOM":8.20,"NEAR":6.40,"FTM":0.68,
+};
+
+// Name lookup
+const NAME_DB = {
+  "AAPL":"Apple Inc.","MSFT":"Microsoft Corp.","NVDA":"NVIDIA Corp.",
+  "GOOGL":"Alphabet Inc.","AMZN":"Amazon.com Inc.","META":"Meta Platforms",
+  "TSLA":"Tesla Inc.","BRK.B":"Berkshire Hathaway","JPM":"JPMorgan Chase",
+  "V":"Visa Inc.","MA":"Mastercard Inc.","BAC":"Bank of America",
+  "WFC":"Wells Fargo","GS":"Goldman Sachs","UNH":"UnitedHealth Group",
+  "JNJ":"Johnson & Johnson","WMT":"Walmart Inc.","PG":"Procter & Gamble",
+  "HD":"Home Depot","CVX":"Chevron Corp.","LLY":"Eli Lilly","KO":"Coca-Cola",
+  "PEP":"PepsiCo Inc.","COST":"Costco Wholesale","MCD":"McDonald's Corp.",
+  "NKE":"Nike Inc.","DIS":"Walt Disney Co.","NFLX":"Netflix Inc.",
+  "ORCL":"Oracle Corp.","ADBE":"Adobe Inc.","CRM":"Salesforce Inc.",
+  "INTC":"Intel Corp.","AMD":"AMD Inc.","QCOM":"Qualcomm Inc.",
+  "AVGO":"Broadcom Inc.","TXN":"Texas Instruments",
+  "VOO":"Vanguard S&P500 ETF","SPY":"SPDR S&P 500 ETF","QQQ":"Invesco QQQ ETF",
+  "IVV":"iShares S&P500 ETF","VTI":"Vanguard Total Market","VIG":"Vanguard Dividend",
+  "SCHD":"Schwab Dividend ETF","JEPI":"JPMorgan Premium Income",
+  "ARKK":"ARK Innovation ETF","BND":"Vanguard Bond ETF",
+  "TIP":"iShares TIPS Bond ETF","AGG":"iShares Core Bond ETF",
+  "TLT":"iShares 20yr Treasury","GLD":"SPDR Gold Shares",
+  "SLV":"iShares Silver Trust","IAU":"iShares Gold Trust",
+  "BTC":"Bitcoin","ETH":"Ethereum","BNB":"BNB Chain",
+  "SOL":"Solana","ADA":"Cardano","DOGE":"Dogecoin",
+  "XRP":"Ripple","AVAX":"Avalanche","DOT":"Polkadot",
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -407,16 +447,25 @@ const EditModal = ({ holding, onSave, onDelete, onClose, T, allHoldings=[] }) =>
   const lookupPrice = (ticker) => {
     const sym = ticker.toUpperCase().trim();
     set("symbol", sym);
-    const known = PRICE_DB[sym];
-    if(known) {
-      set("price", known);
-      setPriceStatus("✅ $" + known.toLocaleString());
-      const names = {"AAPL":"Apple Inc.","MSFT":"Microsoft Corp.","NVDA":"NVIDIA Corp.","GOOGL":"Alphabet Inc.","AMZN":"Amazon.com","META":"Meta Platforms","TSLA":"Tesla Inc.","VOO":"Vanguard S&P500 ETF","SPY":"SPDR S&P 500 ETF","QQQ":"Invesco QQQ ETF","BTC":"Bitcoin","ETH":"Ethereum","TIP":"iShares TIPS Bond ETF","BND":"Vanguard Bond ETF","GLD":"SPDR Gold Shares","VTI":"Vanguard Total Mkt ETF","JPM":"JPMorgan Chase","V":"Visa Inc.","MA":"Mastercard"};
-      if(names[sym] && !form.name) set("name", names[sym]);
-    } else if(sym.length>=2) {
-      setPriceStatus("⚠️ Enter price manually");
-    } else {
-      setPriceStatus("");
+    if(!sym) { setPriceStatus(""); return; }
+    const price = PRICE_DB[sym];
+    const name  = NAME_DB[sym];
+    if(price) {
+      set("price", price);
+      setPriceStatus(`✅ Price loaded: $${price.toLocaleString()}`);
+      if(name) set("name", name);
+      // Auto-detect asset type
+      const cryptos = ["BTC","ETH","BNB","SOL","ADA","DOGE","XRP","AVAX","DOT","MATIC","LINK","UNI","ATOM","NEAR","FTM"];
+      const etfs    = ["VOO","SPY","QQQ","IVV","VTI","VEA","VWO","VIG","SCHD","JEPI","ARKK","XLK","XLF","XLV","XLE"];
+      const bonds   = ["BND","TIP","AGG","TLT","IEF","SHY","VCIT","VCSH","HYG","LQD"];
+      const commod  = ["GLD","SLV","IAU","GDX","PDBC"];
+      if(cryptos.includes(sym))     { set("type","Crypto");    set("sector","Crypto"); }
+      else if(bonds.includes(sym))  { set("type","Bond");      set("sector","Fixed Inc."); }
+      else if(commod.includes(sym)) { set("type","Commodity"); set("sector","Commodities"); }
+      else if(etfs.includes(sym))   { set("type","ETF");       set("sector","Broad Mkt"); }
+      else                          { set("type","Stock");     set("sector","Technology"); }
+    } else if(sym.length>=1) {
+      setPriceStatus("⚠️ Ticker not found — enter price manually");
     }
   };
 
@@ -439,8 +488,16 @@ const EditModal = ({ holding, onSave, onDelete, onClose, T, allHoldings=[] }) =>
           </div>
           <div><label style={lbl}>NAME</label><input value={form.name} onChange={e=>set("name",e.target.value)} placeholder="Apple Inc." style={inp}/></div>
           <div><label style={lbl}>TYPE</label>
-            <select value={form.type} onChange={e=>set("type",e.target.value)} style={{...inp,cursor:"pointer"}}>
-              {["Stock","ETF","Crypto","Bond","REIT","Commodity"].map(t=><option key={t}>{t}</option>)}
+            <select value={form.type} onChange={e=>set("type",e.target.value)} style={{
+              ...inp,cursor:"pointer",
+              appearance:"auto",WebkitAppearance:"auto",
+              background:T.mode==="dark"?"#061525":"#ffffff",
+              color:T.text,
+              padding:"8px 12px",
+            }}>
+              {["Stock","ETF","Crypto","Bond","REIT","Commodity"].map(t=>(
+                <option key={t} value={t} style={{background:T.mode==="dark"?"#061525":"#ffffff",color:T.text}}>{t}</option>
+              ))}
             </select>
           </div>
           <div><label style={lbl}>SHARES / UNITS</label><input value={form.qty} onChange={e=>set("qty",e.target.value)} type="number" placeholder="10" style={inp}/></div>
@@ -449,12 +506,17 @@ const EditModal = ({ holding, onSave, onDelete, onClose, T, allHoldings=[] }) =>
             {form.qty&&form.avgCost&&<div style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted,marginTop:4}}>Cost basis: <b style={{color:BRAND.gold}}>${(+form.qty*+form.avgCost).toLocaleString(undefined,{maximumFractionDigits:0})}</b></div>}
           </div>
           <div><label style={lbl}>BROKER</label>
-            <select value={form.broker} onChange={e=>set("broker",e.target.value)} style={{...inp,cursor:"pointer"}}>
-              {["Robinhood","Fidelity","TSP Federal"].map(b=><option key={b}>{b}</option>)}
+            <select value={form.broker} onChange={e=>{set("broker",e.target.value);set("portfolio","");}} style={{...inp,cursor:"pointer",appearance:"auto",WebkitAppearance:"auto",background:T.mode==="dark"?"#061525":"#ffffff",color:T.text}}>
+              {["Robinhood","Fidelity","TSP Federal"].map(b=>(
+                <option key={b} value={b} style={{background:T.mode==="dark"?"#061525":"#ffffff",color:T.text}}>{b}</option>
+              ))}
             </select>
           </div>
           <div><label style={lbl}>FUND / PORTFOLIO</label><input value={form.portfolio} onChange={e=>set("portfolio",e.target.value)} placeholder="Roth IRA, 401k, Investing..." style={inp}/></div>
-          <div><label style={lbl}>SECTOR</label><input value={form.sector} onChange={e=>set("sector",e.target.value)} placeholder="Technology" style={inp}/></div>
+          <div><label style={lbl}>SECTOR</label><input value={form.sector} onChange={e=>set("sector",e.target.value)} placeholder="Technology" style={inp} list="sector-list"/>
+            <datalist id="sector-list">
+              {["Technology","Healthcare","Finance","Energy","Consumer","Industrials","Materials","Utilities","Real Estate","Crypto","Broad Mkt","Fixed Inc."].map(s=><option key={s} value={s}/>)}
+            </datalist></div>
           <div style={{gridColumn:"1/-1"}}><label style={lbl}>NOTES</label><input value={form.notes} onChange={e=>set("notes",e.target.value)} placeholder="Optional notes about this position..." style={inp}/></div>
         </div>
         {form.qty&&form.price&&form.avgCost&&(
@@ -2205,6 +2267,224 @@ ${portfolioContext}`,
   );
 };
 
+
+// ═══════════════════════════════════════════════════════════════════
+// ALERTS SYSTEM
+// ═══════════════════════════════════════════════════════════════════
+const ALERTS_KEY = "pcc_alerts_v1";
+const loadAlerts = () => {
+  try { return JSON.parse(localStorage.getItem(ALERTS_KEY)||"[]"); } catch(e) { return []; }
+};
+const saveAlerts = (alerts) => {
+  try { localStorage.setItem(ALERTS_KEY, JSON.stringify(alerts)); } catch(e) {}
+};
+
+const AlertsTab = ({ holdings, T }) => {
+  const [alerts,    setAlerts   ] = useState(loadAlerts);
+  const [showForm,  setShowForm ] = useState(false);
+  const [form,      setForm     ] = useState({ symbol:"", type:"above", price:"", note:"" });
+  const [triggered, setTriggered] = useState([]);
+
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+
+  // Check alerts against current prices
+  useEffect(()=>{
+    const fired = alerts.filter(a=>{
+      const h = holdings.find(h=>h.symbol===a.symbol);
+      if(!h) return false;
+      return a.type==="above" ? h.price >= +a.price : h.price <= +a.price;
+    });
+    setTriggered(fired.map(a=>a.id));
+  },[alerts, holdings]);
+
+  const addAlert = () => {
+    if(!form.symbol || !form.price) return;
+    const newAlert = { id:Date.now().toString(), ...form, price:+form.price, createdAt:new Date().toLocaleDateString(), active:true };
+    const updated = [...alerts, newAlert];
+    setAlerts(updated);
+    saveAlerts(updated);
+    setForm({ symbol:"", type:"above", price:"", note:"" });
+    setShowForm(false);
+  };
+
+  const deleteAlert = (id) => {
+    const updated = alerts.filter(a=>a.id!==id);
+    setAlerts(updated);
+    saveAlerts(updated);
+  };
+
+  const toggleAlert = (id) => {
+    const updated = alerts.map(a=>a.id===id?{...a,active:!a.active}:a);
+    setAlerts(updated);
+    saveAlerts(updated);
+  };
+
+  const inp = { background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:"8px 12px", color:T.text, fontSize:12, outline:"none", fontFamily:BRAND.mono, width:"100%" };
+
+  const activeCount   = alerts.filter(a=>a.active).length;
+  const firedCount    = triggered.length;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+        <KPI label="Total Alerts"    value={alerts.length}  sub="Configured"          color={BRAND.gold}   T={T}/>
+        <KPI label="Active"          value={activeCount}    sub="Monitoring now"       color={BRAND.teal}   T={T}/>
+        <KPI label="Triggered"       value={firedCount}     sub="Price reached"        color={firedCount>0?BRAND.red:BRAND.muted} T={T}/>
+        <KPI label="Holdings"        value={holdings.length} sub="Being monitored"     color={BRAND.blue}   T={T}/>
+      </div>
+
+      {/* Triggered alerts banner */}
+      {firedCount>0&&(
+        <div style={{background:`${BRAND.red}12`,border:`2px solid ${BRAND.red}44`,borderRadius:12,padding:"14px 18px",display:"flex",alignItems:"center",gap:12}}>
+          <div style={{width:10,height:10,borderRadius:"50%",background:BRAND.red,animation:"pulse 1s infinite",flexShrink:0}}/>
+          <div>
+            <div style={{fontFamily:BRAND.display,fontWeight:700,fontSize:14,color:BRAND.red}}>🚨 {firedCount} Alert{firedCount>1?"s":""} Triggered!</div>
+            <div style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted,marginTop:3}}>
+              {alerts.filter(a=>triggered.includes(a.id)).map(a=>`${a.symbol} ${a.type==="above"?"≥":"≤"} $${a.price.toLocaleString()}`).join(" · ")}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Alert button */}
+      <div style={{display:"flex",justifyContent:"flex-end"}}>
+        <button onClick={()=>setShowForm(v=>!v)} style={{padding:"9px 20px",borderRadius:10,border:`1px solid ${BRAND.gold}44`,background:showForm?`${BRAND.gold}20`:`${BRAND.gold}10`,cursor:"pointer",color:BRAND.gold,fontFamily:BRAND.display,fontSize:12,fontWeight:700,transition:"all 0.2s"}}>
+          {showForm?"✕ Cancel":"➕ New Alert"}
+        </button>
+      </div>
+
+      {/* Add Alert Form */}
+      {showForm&&(
+        <Card T={T} glow={BRAND.gold} style={{animation:"fadeIn 0.2s ease"}}>
+          <STN title="Create Price Alert" sub="Get notified when price crosses your target" color={BRAND.gold} T={T}/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:14}}>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:5}}>TICKER</div>
+              <select value={form.symbol} onChange={e=>set("symbol",e.target.value)} style={{...inp,cursor:"pointer",appearance:"auto",background:T.mode==="dark"?"#061525":"#fff"}}>
+                <option value="">Select holding...</option>
+                {holdings.map(h=>(
+                  <option key={h.id} value={h.symbol} style={{background:T.mode==="dark"?"#061525":"#fff"}}>
+                    {h.symbol} — ${h.price.toLocaleString()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:5}}>ALERT TYPE</div>
+              <select value={form.type} onChange={e=>set("type",e.target.value)} style={{...inp,cursor:"pointer",appearance:"auto",background:T.mode==="dark"?"#061525":"#fff"}}>
+                <option value="above" style={{background:T.mode==="dark"?"#061525":"#fff"}}>Price rises above ↑</option>
+                <option value="below" style={{background:T.mode==="dark"?"#061525":"#fff"}}>Price falls below ↓</option>
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:5}}>TARGET PRICE ($)</div>
+              <input value={form.price} onChange={e=>set("price",e.target.value)} type="number" placeholder="250.00" style={inp}/>
+              {form.symbol&&form.price&&(()=>{
+                const h=holdings.find(x=>x.symbol===form.symbol);
+                if(!h)return null;
+                const diff=((+form.price-h.price)/h.price*100).toFixed(1);
+                return <div style={{fontSize:10,fontFamily:BRAND.mono,color:+diff>=0?BRAND.teal:BRAND.red,marginTop:4}}>{+diff>=0?"+":""}{diff}% from current ${h.price.toLocaleString()}</div>;
+              })()}
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:5}}>NOTE (OPTIONAL)</div>
+              <input value={form.note} onChange={e=>set("note",e.target.value)} placeholder="Take profit, Stop loss..." style={inp}/>
+            </div>
+          </div>
+          <button onClick={addAlert} style={{padding:"10px 24px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(135deg,${BRAND.gold},${BRAND.gold2})`,color:BRAND.bg,fontFamily:BRAND.display,fontSize:13,fontWeight:800,boxShadow:`0 0 20px ${BRAND.gold}33`}}>
+            ✓ Create Alert
+          </button>
+        </Card>
+      )}
+
+      {/* Alerts List */}
+      {alerts.length===0?(
+        <Card T={T} style={{textAlign:"center",padding:40}}>
+          <div style={{fontSize:32,marginBottom:12}}>🔔</div>
+          <div style={{fontFamily:BRAND.display,fontWeight:600,fontSize:16,color:T.muted}}>No alerts configured</div>
+          <div style={{fontSize:12,fontFamily:BRAND.mono,color:T.muted,marginTop:6}}>Create your first price alert above</div>
+        </Card>
+      ):(
+        <Card T={T}>
+          <STN title="Active Alerts" sub="Click toggle to pause · trash to delete" color={BRAND.blue} T={T}/>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {alerts.sort((a,b)=>b.id-a.id).map(alert=>{
+              const h = holdings.find(x=>x.symbol===alert.symbol);
+              const isFired = triggered.includes(alert.id);
+              const borderColor = isFired ? BRAND.red : alert.active ? BRAND.teal : T.muted;
+              const diff = h ? ((+alert.price-h.price)/h.price*100).toFixed(1) : null;
+
+              return (
+                <div key={alert.id} style={{
+                  display:"flex",alignItems:"center",gap:12,
+                  padding:"12px 16px",
+                  background:isFired?`${BRAND.red}08`:alert.active?`${BRAND.teal}05`:T.surface,
+                  border:`1px solid ${borderColor}33`,
+                  borderLeft:`4px solid ${borderColor}`,
+                  borderRadius:10,transition:"all 0.2s",
+                }}>
+                  {/* Status dot */}
+                  <div style={{width:10,height:10,borderRadius:"50%",background:isFired?BRAND.red:alert.active?BRAND.teal:T.muted,flexShrink:0,animation:isFired?"pulse 1s infinite":"none"}}/>
+
+                  {/* Info */}
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                      <span style={{fontFamily:BRAND.mono,fontWeight:800,fontSize:14,color:BRAND.gold}}>{alert.symbol}</span>
+                      <Chip label={alert.type==="above"?"↑ Above":"↓ Below"} color={alert.type==="above"?BRAND.teal:BRAND.red}/>
+                      <span style={{fontFamily:BRAND.mono,fontWeight:700,fontSize:14,color:T.text}}>${(+alert.price).toLocaleString()}</span>
+                      {isFired&&<Chip label="🚨 TRIGGERED" color={BRAND.red}/>}
+                    </div>
+                    <div style={{display:"flex",gap:12,fontSize:10,fontFamily:BRAND.mono,color:T.muted}}>
+                      {h&&<span>Current: <b style={{color:T.text}}>${h.price.toLocaleString()}</b></span>}
+                      {diff&&<span>Distance: <b style={{color:+diff>=0?BRAND.teal:BRAND.red}}>{+diff>=0?"+":""}{diff}%</b></span>}
+                      <span>Created: {alert.createdAt}</span>
+                      {alert.note&&<span>Note: {alert.note}</span>}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <button onClick={()=>toggleAlert(alert.id)} style={{padding:"5px 12px",borderRadius:7,border:`1px solid ${alert.active?BRAND.teal+"44":T.border}`,background:alert.active?`${BRAND.teal}12`:"transparent",cursor:"pointer",color:alert.active?BRAND.teal:T.muted,fontFamily:BRAND.mono,fontSize:10,fontWeight:700,transition:"all 0.15s"}}>
+                      {alert.active?"⏸ Pause":"▶ Resume"}
+                    </button>
+                    <button onClick={()=>deleteAlert(alert.id)} style={{padding:"5px 10px",borderRadius:7,border:`1px solid ${BRAND.red}33`,background:`${BRAND.red}08`,cursor:"pointer",color:BRAND.red,fontFamily:BRAND.mono,fontSize:12,transition:"all 0.15s"}}>🗑</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Quick alerts suggestions */}
+      {holdings.length>0&&(
+        <Card T={T}>
+          <STN title="Quick Alert Suggestions" sub="Common price targets based on your holdings" color={BRAND.purple} T={T}/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
+            {holdings.slice(0,6).flatMap(h=>[
+              {symbol:h.symbol,type:"above",price:+(h.price*1.10).toFixed(2),label:"+10% Take Profit"},
+              {symbol:h.symbol,type:"below",price:+(h.price*0.90).toFixed(2),label:"-10% Stop Loss"},
+            ]).map((s,i)=>(
+              <button key={i} onClick={()=>{setForm({symbol:s.symbol,type:s.type,price:s.price,note:s.label});setShowForm(true);}} style={{
+                display:"flex",alignItems:"center",gap:8,
+                padding:"9px 13px",borderRadius:9,
+                border:`1px solid ${s.type==="above"?BRAND.teal:BRAND.red}33`,
+                background:`${s.type==="above"?BRAND.teal:BRAND.red}06`,
+                cursor:"pointer",transition:"all 0.2s",textAlign:"left",
+              }}>
+                <span style={{fontFamily:BRAND.mono,fontWeight:700,fontSize:11,color:BRAND.gold}}>{s.symbol}</span>
+                <span style={{fontFamily:BRAND.mono,fontSize:10,color:s.type==="above"?BRAND.teal:BRAND.red}}>{s.label}</span>
+                <span style={{fontFamily:BRAND.mono,fontSize:11,color:T.muted,marginLeft:"auto"}}>${s.price.toLocaleString()}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════════
 // ANALYSIS PANEL — shown below chart at each level
 // ═══════════════════════════════════════════════════════════════════
@@ -2220,6 +2500,7 @@ const ANALYSIS_TABS = [
   { id:"factor",  label:"Factors",      icon:"⚖️" },
   { id:"frontier",label:"Efficient Frontier",icon:"🎯" },
   { id:"ai",      label:"AI Intelligence",  icon:"🤖" },
+  { id:"alerts",  label:"Alerts",           icon:"🔔" },
 ];
 
 const AnalysisPanel = ({ holdings, T, activeTab, botMem, setBotMem }) => {
@@ -2236,6 +2517,7 @@ const AnalysisPanel = ({ holdings, T, activeTab, botMem, setBotMem }) => {
       {activeTab==="factor"  && <FactorTab           holdings={holdings} T={T}/>}
       {activeTab==="frontier"&& <EfficientFrontierTab holdings={holdings} T={T}/>}
       {activeTab==="ai"      && <AITab               holdings={holdings} T={T} botMem={botMem} setBotMem={setBotMem}/>}
+      {activeTab==="alerts"  && <AlertsTab           holdings={holdings} T={T}/>}
     </div>
   );
 };
@@ -2359,7 +2641,7 @@ export default function App() {
           {/* Main Analysis Tabs — 2 Rows, Full Width */}
           <div style={{borderBottom:`1px solid ${T.border}`,paddingBottom:0}}>
             {/* Row 1 */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:3,padding:"4px 0 3px 0"}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,padding:"4px 0 3px 0"}}>
               {[
                 {id:"overview",  label:"Overview",     icon:"📊", color:BRAND.gold},
                 {id:"perf",      label:"Performance",  icon:"📈", color:BRAND.teal},
@@ -2389,7 +2671,7 @@ export default function App() {
               })}
             </div>
             {/* Row 2 */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:3,padding:"3px 0 0 0"}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,padding:"3px 0 0 0"}}>
               {[
                 {id:"proj",      label:"Projections",  icon:"🔮", color:BRAND.purple},
                 {id:"mc",        label:"Monte Carlo",  icon:"🎲", color:BRAND.purple},
@@ -2397,6 +2679,7 @@ export default function App() {
                 {id:"factor",    label:"Factors",      icon:"⚖️", color:BRAND.purple},
                 {id:"frontier",  label:"Eff. Frontier",icon:"🎯", color:BRAND.teal},
                 {id:"ai",        label:"AI Intelligence",icon:"🤖",color:BRAND.amber},
+                {id:"alerts",    label:"Alerts",         icon:"🔔",color:BRAND.red},
               ].map(t=>{
                 const isA=activeTab===t.id;
                 return(
