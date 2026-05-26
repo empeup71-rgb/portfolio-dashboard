@@ -2485,6 +2485,242 @@ const AlertsTab = ({ holdings, T }) => {
   );
 };
 
+
+// ═══════════════════════════════════════════════════════════════════
+// TRANSACTIONS HISTORY
+// ═══════════════════════════════════════════════════════════════════
+const TX_KEY = "pcc_transactions_v1";
+const loadTx = () => {
+  try { return JSON.parse(localStorage.getItem(TX_KEY)||"[]"); } catch(e) { return []; }
+};
+const saveTx = (txs) => {
+  try { localStorage.setItem(TX_KEY, JSON.stringify(txs)); } catch(e) {}
+};
+
+// Generate sample transactions from holdings
+const genSampleTx = (holdings) => holdings.flatMap(h=>[
+  { id:`${h.id}_buy1`, symbol:h.symbol, type:"BUY",  qty:h.qty, price:h.avgCost, total:+(h.qty*h.avgCost).toFixed(2), broker:h.broker, portfolio:h.portfolio, date:"2024-01-15", note:"Initial position" },
+]);
+
+const TransactionsTab = ({ holdings, T }) => {
+  const [txs,     setTxs    ] = useState(()=>{ const s=loadTx(); return s.length>0?s:genSampleTx(holdings); });
+  const [showAdd, setShowAdd] = useState(false);
+  const [filter,  setFilter ] = useState({ type:"ALL", symbol:"ALL", broker:"ALL" });
+  const [sort,    setSort   ] = useState({ col:"date", dir:-1 });
+  const [form,    setForm   ] = useState({ symbol:"", type:"BUY", qty:"", price:"", broker:"Robinhood", portfolio:"Roth IRA", date:new Date().toISOString().split("T")[0], note:"" });
+
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+
+  const addTx = () => {
+    if(!form.symbol||!form.qty||!form.price) return;
+    const tx = { id:Date.now().toString(), ...form, qty:+form.qty, price:+form.price, total:+(+form.qty*+form.price).toFixed(2) };
+    const updated = [tx, ...txs];
+    setTxs(updated); saveTx(updated);
+    setForm({ symbol:"", type:"BUY", qty:"", price:"", broker:"Robinhood", portfolio:"Roth IRA", date:new Date().toISOString().split("T")[0], note:"" });
+    setShowAdd(false);
+  };
+
+  const deleteTx = (id) => { const u=[...txs].filter(t=>t.id!==id); setTxs(u); saveTx(u); };
+
+  // Filter
+  const filtered = txs.filter(t=>
+    (filter.type==="ALL"||t.type===filter.type) &&
+    (filter.symbol==="ALL"||t.symbol===filter.symbol) &&
+    (filter.broker==="ALL"||t.broker===filter.broker)
+  );
+
+  // Sort
+  const sorted = [...filtered].sort((a,b)=>{
+    const av=a[sort.col], bv=b[sort.col];
+    return typeof av==="string"?av.localeCompare(bv)*sort.dir:(bv-av)*sort.dir;
+  });
+
+  // Stats
+  const totalBought = txs.filter(t=>t.type==="BUY" ).reduce((s,t)=>s+t.total,0);
+  const totalSold   = txs.filter(t=>t.type==="SELL").reduce((s,t)=>s+t.total,0);
+  const totalDiv    = txs.filter(t=>t.type==="DIV" ).reduce((s,t)=>s+t.total,0);
+  const realized    = totalSold - txs.filter(t=>t.type==="SELL").reduce((s,t)=>s+t.qty*( txs.find(b=>b.symbol===t.symbol&&b.type==="BUY")?.price||t.price ),0);
+
+  const symbols = [...new Set(txs.map(t=>t.symbol))];
+  const brokers = [...new Set(txs.map(t=>t.broker))];
+
+  const inp = { background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:"7px 11px", color:T.text, fontSize:12, outline:"none", fontFamily:BRAND.mono, width:"100%" };
+  const sel = { ...inp, cursor:"pointer", appearance:"auto", WebkitAppearance:"auto", background:T.mode==="dark"?"#061525":"#fff" };
+
+  const TH = ({col,label}) => (
+    <th onClick={()=>setSort(s=>({col,dir:s.col===col?-s.dir:-1}))} style={{textAlign:"left",padding:"7px 10px",color:sort.col===col?BRAND.gold:T.muted,fontFamily:BRAND.mono,fontSize:9,letterSpacing:1,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none"}}>
+      {label}{sort.col===col?(sort.dir===-1?" ↓":" ↑"):""}
+    </th>
+  );
+
+  const typeColor = { BUY:BRAND.teal, SELL:BRAND.red, DIV:BRAND.green, SPLIT:BRAND.purple, TRANSFER:BRAND.blue };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
+        <KPI label="Total Transactions" value={txs.length}                                          color={BRAND.gold}                         T={T}/>
+        <KPI label="Total Invested"     value={`$${Math.round(totalBought).toLocaleString()}`}      color={BRAND.blue}   sub="All buys"          T={T}/>
+        <KPI label="Total Sold"         value={`$${Math.round(totalSold).toLocaleString()}`}        color={BRAND.red}    sub="All sells"         T={T}/>
+        <KPI label="Dividends Received" value={`$${Math.round(totalDiv).toLocaleString()}`}        color={BRAND.green}  sub="Cash received"     T={T}/>
+        <KPI label="Realized P&L"       value={`${realized>=0?"+":"-"}$${Math.abs(Math.round(realized)).toLocaleString()}`} color={realized>=0?BRAND.teal:BRAND.red} sub="From closed positions" T={T}/>
+      </div>
+
+      {/* Controls */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+        {/* Filters */}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <select value={filter.type} onChange={e=>setFilter(f=>({...f,type:e.target.value}))} style={{...sel,width:"auto",padding:"6px 10px",fontSize:11}}>
+            {["ALL","BUY","SELL","DIV","SPLIT","TRANSFER"].map(t=><option key={t} style={{background:T.mode==="dark"?"#061525":"#fff"}}>{t}</option>)}
+          </select>
+          <select value={filter.symbol} onChange={e=>setFilter(f=>({...f,symbol:e.target.value}))} style={{...sel,width:"auto",padding:"6px 10px",fontSize:11}}>
+            <option value="ALL">All Tickers</option>
+            {symbols.map(s=><option key={s} style={{background:T.mode==="dark"?"#061525":"#fff"}}>{s}</option>)}
+          </select>
+          <select value={filter.broker} onChange={e=>setFilter(f=>({...f,broker:e.target.value}))} style={{...sel,width:"auto",padding:"6px 10px",fontSize:11}}>
+            <option value="ALL">All Brokers</option>
+            {brokers.map(b=><option key={b} style={{background:T.mode==="dark"?"#061525":"#fff"}}>{b}</option>)}
+          </select>
+          <span style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted,alignSelf:"center"}}>{filtered.length} of {txs.length}</span>
+        </div>
+        <button onClick={()=>setShowAdd(v=>!v)} style={{padding:"8px 18px",borderRadius:9,border:`1px solid ${BRAND.gold}44`,background:showAdd?`${BRAND.gold}20`:`${BRAND.gold}10`,cursor:"pointer",color:BRAND.gold,fontFamily:BRAND.display,fontSize:11,fontWeight:700}}>
+          {showAdd?"✕ Cancel":"➕ Add Transaction"}
+        </button>
+      </div>
+
+      {/* Add Transaction Form */}
+      {showAdd&&(
+        <Card T={T} glow={BRAND.gold} style={{animation:"fadeIn 0.2s ease"}}>
+          <STN title="Add Transaction" sub="Record a buy, sell, dividend or transfer" color={BRAND.gold} T={T}/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:12}}>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:4}}>TYPE</div>
+              <select value={form.type} onChange={e=>set("type",e.target.value)} style={{...sel}}>
+                {["BUY","SELL","DIV","SPLIT","TRANSFER"].map(t=><option key={t} style={{background:T.mode==="dark"?"#061525":"#fff"}}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:4}}>TICKER</div>
+              <input value={form.symbol} onChange={e=>{set("symbol",e.target.value.toUpperCase()); const p=PRICE_DB[e.target.value.toUpperCase()]; if(p)set("price",p);}} placeholder="AAPL" style={{...inp,fontWeight:700,color:BRAND.gold}} list="tx-symbols"/>
+              <datalist id="tx-symbols">{holdings.map(h=><option key={h.id} value={h.symbol}/>)}</datalist>
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:4}}>SHARES</div>
+              <input value={form.qty} onChange={e=>set("qty",e.target.value)} type="number" placeholder="10" style={inp}/>
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:4}}>PRICE ($)</div>
+              <input value={form.price} onChange={e=>set("price",e.target.value)} type="number" placeholder="213.50" style={inp}/>
+              {form.qty&&form.price&&<div style={{fontSize:10,fontFamily:BRAND.mono,color:T.muted,marginTop:3}}>Total: <b style={{color:BRAND.gold}}>${(+form.qty*+form.price).toLocaleString(undefined,{maximumFractionDigits:0})}</b></div>}
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:4}}>DATE</div>
+              <input value={form.date} onChange={e=>set("date",e.target.value)} type="date" style={inp}/>
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:4}}>BROKER</div>
+              <select value={form.broker} onChange={e=>set("broker",e.target.value)} style={sel}>
+                {["Robinhood","Fidelity","TSP Federal"].map(b=><option key={b} style={{background:T.mode==="dark"?"#061525":"#fff"}}>{b}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:4}}>PORTFOLIO</div>
+              <input value={form.portfolio} onChange={e=>set("portfolio",e.target.value)} placeholder="Roth IRA" style={inp} list="tx-portfolios"/>
+              <datalist id="tx-portfolios">{[...new Set(holdings.map(h=>h.portfolio))].map(p=><option key={p} value={p}/>)}</datalist>
+            </div>
+            <div>
+              <div style={{fontSize:9,fontFamily:BRAND.mono,color:T.muted,letterSpacing:2,marginBottom:4}}>NOTE</div>
+              <input value={form.note} onChange={e=>set("note",e.target.value)} placeholder="Optional note..." style={inp}/>
+            </div>
+          </div>
+          <button onClick={addTx} style={{padding:"10px 24px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(135deg,${BRAND.gold},${BRAND.gold2})`,color:BRAND.bg,fontFamily:BRAND.display,fontSize:13,fontWeight:800,boxShadow:`0 0 20px ${BRAND.gold}33`}}>
+            ✓ Record Transaction
+          </button>
+        </Card>
+      )}
+
+      {/* Transaction Table */}
+      <Card T={T}>
+        <STN title="Transaction History" sub={`${filtered.length} transactions · sorted by ${sort.col}`} color={BRAND.blue} T={T}/>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead>
+              <tr style={{borderBottom:`1px solid ${T.border}`}}>
+                <TH col="date"      label="Date"/>
+                <TH col="type"      label="Type"/>
+                <TH col="symbol"    label="Symbol"/>
+                <TH col="qty"       label="Shares"/>
+                <TH col="price"     label="Price"/>
+                <TH col="total"     label="Total"/>
+                <th style={{textAlign:"left",padding:"7px 10px",color:T.muted,fontFamily:BRAND.mono,fontSize:9,letterSpacing:1}}>Broker</th>
+                <th style={{textAlign:"left",padding:"7px 10px",color:T.muted,fontFamily:BRAND.mono,fontSize:9,letterSpacing:1}}>Portfolio</th>
+                <th style={{textAlign:"left",padding:"7px 10px",color:T.muted,fontFamily:BRAND.mono,fontSize:9,letterSpacing:1}}>Note</th>
+                <th style={{padding:"7px 10px"}}/>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((tx,i)=>(
+                <tr key={i}
+                  style={{borderBottom:`1px solid ${T.border}`,transition:"background 0.15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.surface}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <td style={{padding:"9px 10px",fontFamily:BRAND.mono,color:T.muted,fontSize:11}}>{tx.date}</td>
+                  <td style={{padding:"9px 10px"}}>
+                    <Chip label={tx.type} color={typeColor[tx.type]||BRAND.gold}/>
+                  </td>
+                  <td style={{padding:"9px 10px",fontWeight:700,color:BRAND.gold,fontFamily:BRAND.mono,fontSize:13}}>{tx.symbol}</td>
+                  <td style={{padding:"9px 10px",fontFamily:BRAND.mono,color:T.text}}>{tx.qty}</td>
+                  <td style={{padding:"9px 10px",fontFamily:BRAND.mono,color:T.text}}>${(+tx.price).toLocaleString()}</td>
+                  <td style={{padding:"9px 10px",fontFamily:BRAND.mono,fontWeight:700,color:tx.type==="SELL"?BRAND.red:tx.type==="DIV"?BRAND.green:BRAND.teal}}>{tx.type==="SELL"?"-":"+"}${Math.round(tx.total).toLocaleString()}</td>
+                  <td style={{padding:"9px 10px",fontSize:11,color:T.muted}}>{tx.broker?.split(" ")[0]}</td>
+                  <td style={{padding:"9px 10px",fontSize:11,color:T.muted}}>{tx.portfolio}</td>
+                  <td style={{padding:"9px 10px",fontSize:11,color:T.muted,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.note}</td>
+                  <td style={{padding:"9px 10px"}}>
+                    <button onClick={()=>deleteTx(tx.id)} style={{padding:"3px 8px",borderRadius:5,border:`1px solid ${BRAND.red}33`,background:`${BRAND.red}08`,cursor:"pointer",color:BRAND.red,fontSize:11}}>🗑</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{borderTop:`2px solid ${T.border}`,background:`${BRAND.gold}05`}}>
+                <td colSpan={5} style={{padding:"9px 10px",fontFamily:BRAND.display,fontWeight:700,color:BRAND.gold}}>TOTALS</td>
+                <td style={{padding:"9px 10px",fontFamily:BRAND.mono,fontWeight:800,color:BRAND.teal,fontSize:13}}>${Math.round(filtered.reduce((s,t)=>s+(t.type==="SELL"?-t.total:t.total),0)).toLocaleString()}</td>
+                <td colSpan={4}/>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </Card>
+
+      {/* Monthly summary chart */}
+      <Card T={T} glow={BRAND.blue}>
+        <STN title="Monthly Activity" sub="Buys vs Sells by month" color={BRAND.blue} T={T}/>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={Array.from({length:12},(_,i)=>{
+            const month = new Date(2024,i,1).toLocaleString("en",{month:"short"});
+            const monthTxs = txs.filter(t=>new Date(t.date).getMonth()===i);
+            return {
+              month,
+              Buys:  +monthTxs.filter(t=>t.type==="BUY" ).reduce((s,t)=>s+t.total,0).toFixed(0),
+              Sells: +monthTxs.filter(t=>t.type==="SELL").reduce((s,t)=>s+t.total,0).toFixed(0),
+              Divs:  +monthTxs.filter(t=>t.type==="DIV" ).reduce((s,t)=>s+t.total,0).toFixed(0),
+            };
+          })} margin={{top:5,right:5,bottom:0,left:0}}>
+            <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
+            <XAxis dataKey="month" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false}/>
+            <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`} width={45}/>
+            <Tooltip content={<TT T={T}/>}/>
+            <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
+            <Bar dataKey="Buys"  fill={BRAND.teal} radius={[4,4,0,0]} opacity={.85}/>
+            <Bar dataKey="Sells" fill={BRAND.red}   radius={[4,4,0,0]} opacity={.85}/>
+            <Bar dataKey="Divs"  fill={BRAND.green} radius={[4,4,0,0]} opacity={.85}/>
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+    </div>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════════
 // ANALYSIS PANEL — shown below chart at each level
 // ═══════════════════════════════════════════════════════════════════
@@ -2501,6 +2737,7 @@ const ANALYSIS_TABS = [
   { id:"frontier",label:"Efficient Frontier",icon:"🎯" },
   { id:"ai",      label:"AI Intelligence",  icon:"🤖" },
   { id:"alerts",  label:"Alerts",           icon:"🔔" },
+  { id:"history", label:"Transactions",      icon:"📋" },
 ];
 
 const AnalysisPanel = ({ holdings, T, activeTab, botMem, setBotMem }) => {
@@ -2517,7 +2754,8 @@ const AnalysisPanel = ({ holdings, T, activeTab, botMem, setBotMem }) => {
       {activeTab==="factor"  && <FactorTab           holdings={holdings} T={T}/>}
       {activeTab==="frontier"&& <EfficientFrontierTab holdings={holdings} T={T}/>}
       {activeTab==="ai"      && <AITab               holdings={holdings} T={T} botMem={botMem} setBotMem={setBotMem}/>}
-      {activeTab==="alerts"  && <AlertsTab           holdings={holdings} T={T}/>}
+      {activeTab==="alerts"  && <AlertsTab        holdings={holdings} T={T}/>}
+      {activeTab==="history" && <TransactionsTab  holdings={holdings} T={T}/>}
     </div>
   );
 };
@@ -2671,7 +2909,7 @@ export default function App() {
               })}
             </div>
             {/* Row 2 */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,padding:"3px 0 0 0"}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(8,1fr)",gap:3,padding:"3px 0 0 0"}}>
               {[
                 {id:"proj",      label:"Projections",  icon:"🔮", color:BRAND.purple},
                 {id:"mc",        label:"Monte Carlo",  icon:"🎲", color:BRAND.purple},
@@ -2680,6 +2918,7 @@ export default function App() {
                 {id:"frontier",  label:"Eff. Frontier",icon:"🎯", color:BRAND.teal},
                 {id:"ai",        label:"AI Intelligence",icon:"🤖",color:BRAND.amber},
                 {id:"alerts",    label:"Alerts",         icon:"🔔",color:BRAND.red},
+                {id:"history",   label:"Transactions",   icon:"📋",color:BRAND.blue},
               ].map(t=>{
                 const isA=activeTab===t.id;
                 return(
