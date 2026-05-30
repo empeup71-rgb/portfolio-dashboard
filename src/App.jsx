@@ -550,7 +550,7 @@ const PortfolioChart = ({ holdings, period, onPeriodChange, color, T, title, sub
 
   const ChartContent = ({ height }) => (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={cd} margin={{top:5,right:5,bottom:0,left:0}}>
+      <AreaChart isAnimationActive={false} data={cd} margin={{top:5,right:5,bottom:0,left:0}}>
         <defs>
           <linearGradient id={`g_${color.replace("#","")}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"   stopColor={color} stopOpacity={.32}/>
@@ -561,7 +561,7 @@ const PortfolioChart = ({ holdings, period, onPeriodChange, color, T, title, sub
         <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(cd.length/7)}/>
         <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`} width={52}/>
         <Tooltip content={<TT T={T}/>}/>
-        <Area type="monotoneX" dataKey="value" name="Value" stroke={color} strokeWidth={2.5}
+        <Area isAnimationActive={false} type="monotoneX" dataKey="value" name="Value" stroke={color} strokeWidth={2.5}
           fill={`url(#g_${color.replace("#","")})`} dot={false}
           activeDot={{r:6,fill:color,stroke:T.bg,strokeWidth:2}}/>
       </AreaChart>
@@ -646,13 +646,13 @@ const PerformanceTab = ({ holdings, T }) => {
 
   const WeeklyChart = ({ height }) => (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={wd} margin={{top:5,right:5,bottom:0,left:0}}>
+      <BarChart isAnimationActive={false} data={wd} margin={{top:5,right:5,bottom:0,left:0}}>
         <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
         <XAxis dataKey="day" tick={{fill:T.muted,fontSize:10,fontFamily:BRAND.mono}} tickLine={false} axisLine={false}/>
         <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${(v/1000).toFixed(1)}k`} width={50}/>
         <Tooltip content={<TT T={T}/>}/>
         <ReferenceLine y={0} stroke={T.dim} strokeWidth={1}/>
-        <Bar dataKey="pl" name="P&L $" radius={[6,6,0,0]}>
+        <Bar isAnimationActive={false} dataKey="pl" name="P&L $" radius={[6,6,0,0]}>
           {wd.map((d,i)=><Cell key={i} fill={d.pl>=0?BRAND.teal:BRAND.red} opacity={.85}/>)}
         </Bar>
       </BarChart>
@@ -682,13 +682,13 @@ const PerformanceTab = ({ holdings, T }) => {
         <STN title="Performance Attribution" sub="Return % and P&L contribution by holding" color={BRAND.purple} T={T}/>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={hp} layout="vertical" margin={{top:0,right:15,bottom:0,left:0}}>
+            <BarChart isAnimationActive={false} data={hp} layout="vertical" margin={{top:0,right:15,bottom:0,left:0}}>
               <CartesianGrid strokeDasharray="2 6" stroke={T.border} horizontal={false}/>
               <XAxis type="number" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`}/>
               <YAxis dataKey="name" type="category" tick={{fill:T.muted,fontSize:10,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} width={45}/>
               <Tooltip content={<TT T={T}/>}/>
               <ReferenceLine x={0} stroke={T.dim}/>
-              <Bar dataKey="ret" name="Return %" radius={[0,6,6,0]}>
+              <Bar isAnimationActive={false} dataKey="ret" name="Return %" radius={[0,6,6,0]}>
                 {hp.map((d,i)=><Cell key={i} fill={d.ret>=0?BRAND.teal:BRAND.red} opacity={.85}/>)}
               </Bar>
             </BarChart>
@@ -746,15 +746,15 @@ const BenchmarkTab = ({ holdings, T }) => {
 
   const BmChart = ({height}) => (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={cd} margin={{top:5,right:5,bottom:0,left:0}}>
+      <LineChart isAnimationActive={false} data={cd} margin={{top:5,right:5,bottom:0,left:0}}>
         <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
         <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(days/6)}/>
         <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`${v.toFixed(0)}`} width={45}/>
         <Tooltip content={<TT T={T}/>}/>
         <ReferenceLine y={100} stroke={T.border} strokeDasharray="4 2"/>
         <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:10}}/>
-        <Line type="monotoneX" dataKey="Portfolio" stroke={BRAND.gold} strokeWidth={3} dot={false} activeDot={{r:6,fill:BRAND.gold,stroke:T.bg,strokeWidth:2}}/>
-        {BENCHES.filter(b=>vis[b.key]).map(b=><Line key={b.key} type="monotoneX" dataKey={b.key} stroke={b.color} strokeWidth={1.5} dot={false} strokeDasharray="4 2" opacity={.8}/>)}
+        <Line isAnimationActive={false} type="monotoneX" dataKey="Portfolio" stroke={BRAND.gold} strokeWidth={3} dot={false} activeDot={{r:6,fill:BRAND.gold,stroke:T.bg,strokeWidth:2}}/>
+        {BENCHES.filter(b=>vis[b.key]).map(b=><Line isAnimationActive={false} key={b.key} type="monotoneX" dataKey={b.key} stroke={b.color} strokeWidth={1.5} dot={false} strokeDasharray="4 2" opacity={.8}/>)}
       </LineChart>
     </ResponsiveContainer>
   );
@@ -837,14 +837,14 @@ const RiskTab = ({ holdings, T }) => {
 
   const UWChart = ({height}) => (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={uwd} margin={{top:5,right:5,bottom:0,left:0}}>
+      <AreaChart isAnimationActive={false} data={uwd} margin={{top:5,right:5,bottom:0,left:0}}>
         <defs><linearGradient id="gRisk" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BRAND.red} stopOpacity={.45}/><stop offset="100%" stopColor={BRAND.red} stopOpacity={.04}/></linearGradient></defs>
         <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
         <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(uwd.length/6)}/>
         <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`} width={45}/>
         <Tooltip content={<TT T={T}/>}/>
         <ReferenceLine y={0} stroke={BRAND.teal} strokeWidth={1.5} strokeDasharray="4 2"/>
-        <Area type="monotoneX" dataKey="drawdown" name="Drawdown %" stroke={BRAND.red} strokeWidth={2} fill="url(#gRisk)" dot={false}/>
+        <Area isAnimationActive={false} type="monotoneX" dataKey="drawdown" name="Drawdown %" stroke={BRAND.red} strokeWidth={2} fill="url(#gRisk)" dot={false}/>
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -973,25 +973,25 @@ const DividendsTab = ({ holdings, T }) => {
 
   const MonthChart = ({height}) => (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={mo} margin={{top:5,right:5,bottom:0,left:0}}>
+      <BarChart isAnimationActive={false} data={mo} margin={{top:5,right:5,bottom:0,left:0}}>
         <defs><linearGradient id="gDiv" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BRAND.green} stopOpacity={.9}/><stop offset="100%" stopColor={BRAND.teal} stopOpacity={.7}/></linearGradient></defs>
         <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
         <XAxis dataKey="month" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false}/>
         <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${v}`} width={45}/>
         <Tooltip content={<TT T={T}/>}/>
-        <Bar dataKey="income" name="Income $" fill="url(#gDiv)" radius={[6,6,0,0]}/>
+        <Bar isAnimationActive={false} dataKey="income" name="Income $" fill="url(#gDiv)" radius={[6,6,0,0]}/>
       </BarChart>
     </ResponsiveContainer>
   );
   const DripChart = ({height}) => (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={drip} margin={{top:5,right:5,bottom:0,left:0}}>
+      <AreaChart isAnimationActive={false} data={drip} margin={{top:5,right:5,bottom:0,left:0}}>
         <defs><linearGradient id="gDrip" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BRAND.teal} stopOpacity={.3}/><stop offset="100%" stopColor={BRAND.teal} stopOpacity={.02}/></linearGradient></defs>
         <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
         <XAxis dataKey="year" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={4}/>
         <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`} width={52}/>
         <Tooltip content={<TT T={T}/>}/>
-        <Area type="monotoneX" dataKey="value" name="Portfolio" stroke={BRAND.teal} strokeWidth={2.5} fill="url(#gDrip)" dot={false}/>
+        <Area isAnimationActive={false} type="monotoneX" dataKey="value" name="Portfolio" stroke={BRAND.teal} strokeWidth={2.5} fill="url(#gDrip)" dot={false}/>
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -1064,7 +1064,7 @@ const ProjectionsTab = ({ holdings, T }) => {
 
   const ProjChart = ({height}) => (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={pd} margin={{top:5,right:5,bottom:0,left:0}}>
+      <AreaChart isAnimationActive={false} data={pd} margin={{top:5,right:5,bottom:0,left:0}}>
         <defs>
           <linearGradient id="gBull" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BRAND.teal} stopOpacity={.25}/><stop offset="100%" stopColor={BRAND.teal} stopOpacity={0}/></linearGradient>
           <linearGradient id="gBase" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BRAND.gold} stopOpacity={.22}/><stop offset="100%" stopColor={BRAND.gold} stopOpacity={0}/></linearGradient>
@@ -1075,9 +1075,9 @@ const ProjectionsTab = ({ holdings, T }) => {
         <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${(v/1e3).toFixed(0)}k`} width={55}/>
         <Tooltip content={<TT T={T}/>}/>
         <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:10}}/>
-        <Area type="monotoneX" dataKey="Bull (+14%)" stroke={BRAND.teal} strokeWidth={2}   fill="url(#gBull)" dot={false}/>
-        <Area type="monotoneX" dataKey="Base (+8.2%)"stroke={BRAND.gold} strokeWidth={2.5} fill="url(#gBase)" dot={false}/>
-        <Area type="monotoneX" dataKey="Bear (+2%)"  stroke={BRAND.red}  strokeWidth={1.5} fill="url(#gBear)" dot={false}/>
+        <Area isAnimationActive={false} type="monotoneX" dataKey="Bull (+14%)" stroke={BRAND.teal} strokeWidth={2}   fill="url(#gBull)" dot={false}/>
+        <Area isAnimationActive={false} type="monotoneX" dataKey="Base (+8.2%)"stroke={BRAND.gold} strokeWidth={2.5} fill="url(#gBase)" dot={false}/>
+        <Area isAnimationActive={false} type="monotoneX" dataKey="Bear (+2%)"  stroke={BRAND.red}  strokeWidth={1.5} fill="url(#gBear)" dot={false}/>
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -1138,7 +1138,7 @@ const MonteCarloTab = ({ holdings, T }) => {
 
   const MCChart = ({height}) => (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{top:5,right:55,bottom:0,left:0}}>
+      <AreaChart isAnimationActive={false} data={data} margin={{top:5,right:55,bottom:0,left:0}}>
         <defs>
           <linearGradient id="gMC90" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BRAND.teal} stopOpacity={.22}/><stop offset="100%" stopColor={BRAND.teal} stopOpacity={0}/></linearGradient>
           <linearGradient id="gMC50" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BRAND.gold} stopOpacity={.22}/><stop offset="100%" stopColor={BRAND.gold} stopOpacity={0}/></linearGradient>
@@ -1150,9 +1150,9 @@ const MonteCarloTab = ({ holdings, T }) => {
         <Tooltip content={<TT T={T}/>}/>
         <ReferenceLine y={tg} stroke={BRAND.amber} strokeDasharray="5 3" label={{value:`Target $${(tg/1e3).toFixed(0)}k`,fill:BRAND.amber,fontSize:9,fontFamily:BRAND.mono,position:"right"}}/>
         <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:10}}/>
-        <Area type="monotoneX" dataKey="p90" name="Optimistic (P90)" stroke="#00FFB3" strokeWidth={2.5} fill="url(#gMC90)" dot={false}/>
-        <Area type="monotoneX" dataKey="p50" name="Base Case (P50)"  stroke="#FFD700" strokeWidth={3}   fill="url(#gMC50)" dot={false}/>
-        <Area type="monotoneX" dataKey="p10" name="Pessimistic (P10)"stroke="#FF3333" strokeWidth={2}   fill="url(#gMC10)" dot={false}/>
+        <Area isAnimationActive={false} type="monotoneX" dataKey="p90" name="Optimistic (P90)" stroke="#00FFB3" strokeWidth={2.5} fill="url(#gMC90)" dot={false}/>
+        <Area isAnimationActive={false} type="monotoneX" dataKey="p50" name="Base Case (P50)"  stroke="#FFD700" strokeWidth={3}   fill="url(#gMC50)" dot={false}/>
+        <Area isAnimationActive={false} type="monotoneX" dataKey="p10" name="Pessimistic (P10)"stroke="#FF3333" strokeWidth={2}   fill="url(#gMC10)" dot={false}/>
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -1333,12 +1333,12 @@ const AssetDetail = ({ holding, T, onBack, onEdit }) => {
             </div>);
           }}/>
           {/* High-Low range */}
-          <Bar dataKey="high" fill="transparent" stroke="transparent"/>
+          <Bar isAnimationActive={false} dataKey="high" fill="transparent" stroke="transparent"/>
           {candles.map((c,i)=>(
             <ReferenceLine key={i} segment={[{x:c.date,y:c.low},{x:c.date,y:c.high}]} stroke={c.close>=c.open?BRAND.teal:BRAND.red} strokeWidth={1} ifOverflow="visible"/>
           ))}
           {/* OHLC bars */}
-          <Bar dataKey="close" radius={[2,2,0,0]} maxBarSize={8}>
+          <Bar isAnimationActive={false} dataKey="close" radius={[2,2,0,0]} maxBarSize={8}>
             {candles.map((c,i)=><Cell key={i} fill={c.close>=c.open?BRAND.teal:BRAND.red} opacity={.85}/>)}
           </Bar>
         </ComposedChart>
@@ -1351,14 +1351,14 @@ const AssetDetail = ({ holding, T, onBack, onEdit }) => {
     const isUp = holding.price >= holding.avgCost;
     return (
       <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={areaData} margin={{top:5,right:5,bottom:0,left:0}}>
+        <AreaChart isAnimationActive={false} data={areaData} margin={{top:5,right:5,bottom:0,left:0}}>
           <defs><linearGradient id="gAsset" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={isUp?BRAND.teal:BRAND.red} stopOpacity={.3}/><stop offset="100%" stopColor={isUp?BRAND.teal:BRAND.red} stopOpacity={.02}/></linearGradient></defs>
           <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
           <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(areaData.length/7)}/>
           <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${v.toLocaleString()}`} width={65}/>
           <Tooltip content={<TT T={T}/>}/>
           <ReferenceLine y={holding.avgCost} stroke={BRAND.amber} strokeDasharray="4 2" label={{value:`Cost $${holding.avgCost}`,fill:BRAND.amber,fontSize:9,position:"right"}}/>
-          <Area type="monotoneX" dataKey="value" name="Price" stroke={isUp?BRAND.teal:BRAND.red} strokeWidth={2.5} fill="url(#gAsset)" dot={false} activeDot={{r:5,fill:isUp?BRAND.teal:BRAND.red,stroke:T.bg,strokeWidth:2}}/>
+          <Area isAnimationActive={false} type="monotoneX" dataKey="value" name="Price" stroke={isUp?BRAND.teal:BRAND.red} strokeWidth={2.5} fill="url(#gAsset)" dot={false} activeDot={{r:5,fill:isUp?BRAND.teal:BRAND.red,stroke:T.bg,strokeWidth:2}}/>
         </AreaChart>
       </ResponsiveContainer>
     );
@@ -1376,7 +1376,7 @@ const AssetDetail = ({ holding, T, onBack, onEdit }) => {
           <div style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted}}>RSI &gt;70 = overbought · RSI &lt;30 = oversold</div>
         </div>
         <ResponsiveContainer width="100%" height={height-40}>
-          <LineChart data={rsiData} margin={{top:5,right:5,bottom:0,left:0}}>
+          <LineChart isAnimationActive={false} data={rsiData} margin={{top:5,right:5,bottom:0,left:0}}>
             <CartesianGrid strokeDasharray="2 6" stroke={T.border} vertical={false}/>
             <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(rsiData.length/7)}/>
             <YAxis domain={[0,100]} tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} width={35}/>
@@ -1384,7 +1384,7 @@ const AssetDetail = ({ holding, T, onBack, onEdit }) => {
             <ReferenceLine y={70} stroke={BRAND.red}   strokeDasharray="4 2" label={{value:"70",fill:BRAND.red,  fontSize:9,position:"right"}}/>
             <ReferenceLine y={30} stroke={BRAND.teal}  strokeDasharray="4 2" label={{value:"30",fill:BRAND.teal,fontSize:9,position:"right"}}/>
             <ReferenceLine y={50} stroke={T.border}    strokeDasharray="2 4"/>
-            <Line type="monotoneX" dataKey="rsi" name="RSI" stroke={BRAND.purple} strokeWidth={2} dot={false} activeDot={{r:4,fill:BRAND.purple,stroke:T.bg,strokeWidth:2}}/>
+            <Line isAnimationActive={false} type="monotoneX" dataKey="rsi" name="RSI" stroke={BRAND.purple} strokeWidth={2} dot={false} activeDot={{r:4,fill:BRAND.purple,stroke:T.bg,strokeWidth:2}}/>
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -1407,11 +1407,11 @@ const AssetDetail = ({ holding, T, onBack, onEdit }) => {
             <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} width={45} tickFormatter={v=>v.toFixed(1)}/>
             <Tooltip content={<TT T={T}/>}/>
             <ReferenceLine y={0} stroke={T.muted} strokeWidth={1}/>
-            <Bar dataKey="hist" name="Histogram" radius={[2,2,0,0]} maxBarSize={6}>
+            <Bar isAnimationActive={false} dataKey="hist" name="Histogram" radius={[2,2,0,0]} maxBarSize={6}>
               {macdData.map((d,i)=><Cell key={i} fill={d.hist>=0?BRAND.teal:BRAND.red} opacity={.8}/>)}
             </Bar>
-            <Line type="monotoneX" dataKey="macd"   name="MACD"   stroke={BRAND.blue}   strokeWidth={2} dot={false}/>
-            <Line type="monotoneX" dataKey="signal" name="Signal" stroke={BRAND.amber}  strokeWidth={1.5} dot={false} strokeDasharray="4 2"/>
+            <Line isAnimationActive={false} type="monotoneX" dataKey="macd"   name="MACD"   stroke={BRAND.blue}   strokeWidth={2} dot={false}/>
+            <Line isAnimationActive={false} type="monotoneX" dataKey="signal" name="Signal" stroke={BRAND.amber}  strokeWidth={1.5} dot={false} strokeDasharray="4 2"/>
             <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
           </ComposedChart>
         </ResponsiveContainer>
@@ -1431,7 +1431,7 @@ const AssetDetail = ({ holding, T, onBack, onEdit }) => {
           <div style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted}}>Upper: ${lastB?.upper?.toFixed(0)} · Mid: ${lastB?.mid?.toFixed(0)} · Lower: ${lastB?.lower?.toFixed(0)}</div>
         </div>
         <ResponsiveContainer width="100%" height={height-40}>
-          <AreaChart data={bollData} margin={{top:5,right:5,bottom:0,left:0}}>
+          <AreaChart isAnimationActive={false} data={bollData} margin={{top:5,right:5,bottom:0,left:0}}>
             <defs>
               <linearGradient id="gBoll" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BRAND.cyan} stopOpacity={.12}/><stop offset="100%" stopColor={BRAND.cyan} stopOpacity={.02}/></linearGradient>
             </defs>
@@ -1439,10 +1439,10 @@ const AssetDetail = ({ holding, T, onBack, onEdit }) => {
             <XAxis dataKey="date" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} interval={Math.floor(bollData.length/7)}/>
             <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${v.toFixed(0)}`} width={60}/>
             <Tooltip content={<TT T={T}/>}/>
-            <Area type="monotoneX" dataKey="upper" name="Upper Band" stroke={BRAND.cyan}   strokeWidth={1.5} fill="url(#gBoll)" strokeDasharray="4 2" dot={false}/>
-            <Area type="monotoneX" dataKey="lower" name="Lower Band" stroke={BRAND.cyan}   strokeWidth={1.5} fill="transparent" strokeDasharray="4 2" dot={false}/>
-            <Line type="monotoneX" dataKey="mid"   name="Mid (MA20)" stroke={BRAND.amber}  strokeWidth={1.5} dot={false} strokeDasharray="3 2"/>
-            <Line type="monotoneX" dataKey="close" name="Price"      stroke={hplp>=0?BRAND.teal:BRAND.red} strokeWidth={2.5} dot={false} activeDot={{r:5}}/>
+            <Area isAnimationActive={false} type="monotoneX" dataKey="upper" name="Upper Band" stroke={BRAND.cyan}   strokeWidth={1.5} fill="url(#gBoll)" strokeDasharray="4 2" dot={false}/>
+            <Area isAnimationActive={false} type="monotoneX" dataKey="lower" name="Lower Band" stroke={BRAND.cyan}   strokeWidth={1.5} fill="transparent" strokeDasharray="4 2" dot={false}/>
+            <Line isAnimationActive={false} type="monotoneX" dataKey="mid"   name="Mid (MA20)" stroke={BRAND.amber}  strokeWidth={1.5} dot={false} strokeDasharray="3 2"/>
+            <Line isAnimationActive={false} type="monotoneX" dataKey="close" name="Price"      stroke={hplp>=0?BRAND.teal:BRAND.red} strokeWidth={2.5} dot={false} activeDot={{r:5}}/>
             <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
           </AreaChart>
         </ResponsiveContainer>
@@ -1624,11 +1624,11 @@ const SnowflakeTab = ({ holdings, T }) => {
         <Card T={T} glow={BRAND.teal}>
           <STN title="Portfolio Snowflake" sub="8-dimension quality analysis — click any dimension for insight" color={BRAND.teal} T={T}/>
           <ResponsiveContainer width="100%" height={340}>
-            <RadarChart data={dims} margin={{top:20,right:50,bottom:20,left:50}}>
+            <RadarChart isAnimationActive={false} data={dims} margin={{top:20,right:50,bottom:20,left:50}}>
               <PolarGrid stroke={T.border} gridType="polygon"/>
               <PolarAngleAxis dataKey="subject" tick={{fill:T.muted,fontSize:10,fontFamily:BRAND.mono,fontWeight:600}}/>
-              <Radar name="Portfolio" dataKey="portfolio" stroke={BRAND.gold}   fill={BRAND.gold}   fillOpacity={.18} strokeWidth={2.5} dot={{fill:BRAND.gold,  r:5,strokeWidth:0}}/>
-              <Radar name="Benchmark" dataKey="benchmark" stroke={BRAND.blue}   fill={BRAND.blue}   fillOpacity={.08} strokeWidth={1.5} strokeDasharray="4 2"  dot={{fill:BRAND.blue,  r:3,strokeWidth:0}}/>
+              <Radar isAnimationActive={false} name="Portfolio" dataKey="portfolio" stroke={BRAND.gold}   fill={BRAND.gold}   fillOpacity={.18} strokeWidth={2.5} dot={{fill:BRAND.gold,  r:5,strokeWidth:0}}/>
+              <Radar isAnimationActive={false} name="Benchmark" dataKey="benchmark" stroke={BRAND.blue}   fill={BRAND.blue}   fillOpacity={.08} strokeWidth={1.5} strokeDasharray="4 2"  dot={{fill:BRAND.blue,  r:3,strokeWidth:0}}/>
               <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
               <Tooltip contentStyle={{background:T.bg2,border:`1px solid ${T.border}`,borderRadius:10,fontSize:11}}/>
             </RadarChart>
@@ -1747,11 +1747,11 @@ const FactorTab = ({ holdings, T }) => {
         <Card T={T} glow={BRAND.purple}>
           <STN title="Factor Exposure Radar" sub="Portfolio vs benchmark factor tilts" color={BRAND.purple} T={T}/>
           <ResponsiveContainer width="100%" height={320}>
-            <RadarChart data={radarData} margin={{top:20,right:50,bottom:20,left:50}}>
+            <RadarChart isAnimationActive={false} data={radarData} margin={{top:20,right:50,bottom:20,left:50}}>
               <PolarGrid stroke={T.border} gridType="polygon"/>
               <PolarAngleAxis dataKey="subject" tick={{fill:T.muted,fontSize:10,fontFamily:BRAND.mono,fontWeight:600}}/>
-              <Radar name="Portfolio" dataKey="portfolio" stroke={BRAND.purple} fill={BRAND.purple} fillOpacity={.18} strokeWidth={2.5} dot={{fill:BRAND.purple,r:5,strokeWidth:0}}/>
-              <Radar name="Benchmark" dataKey="benchmark" stroke={BRAND.muted}  fill={BRAND.muted}  fillOpacity={.06} strokeWidth={1.5} strokeDasharray="4 2" dot={{fill:BRAND.muted,r:3,strokeWidth:0}}/>
+              <Radar isAnimationActive={false} name="Portfolio" dataKey="portfolio" stroke={BRAND.purple} fill={BRAND.purple} fillOpacity={.18} strokeWidth={2.5} dot={{fill:BRAND.purple,r:5,strokeWidth:0}}/>
+              <Radar isAnimationActive={false} name="Benchmark" dataKey="benchmark" stroke={BRAND.muted}  fill={BRAND.muted}  fillOpacity={.06} strokeWidth={1.5} strokeDasharray="4 2" dot={{fill:BRAND.muted,r:3,strokeWidth:0}}/>
               <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
               <Tooltip contentStyle={{background:T.bg2,border:`1px solid ${T.border}`,borderRadius:10,fontSize:11}}/>
             </RadarChart>
@@ -1873,7 +1873,7 @@ const EfficientFrontierTab = ({ holdings, T }) => {
         <Card T={T} glow={BRAND.teal}>
           <STN title="Efficient Frontier" sub="Risk-Return tradeoff — yellow = current portfolio · green = max Sharpe · blue = min vol" color={BRAND.teal} T={T}/>
           <ResponsiveContainer width="100%" height={300}>
-            <ScatterChart margin={{top:10,right:20,bottom:20,left:10}}>
+            <ScatterChart isAnimationActive={false} margin={{top:10,right:20,bottom:20,left:10}}>
               <CartesianGrid strokeDasharray="2 6" stroke={T.border}/>
               <XAxis dataKey="risk"   name="Risk (%)"   type="number" domain={[2,42]} tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} label={{value:"Risk (Volatility %)",position:"insideBottom",offset:-10,fill:T.muted,fontSize:10}}/>
               <YAxis dataKey="return" name="Return (%)" type="number" tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} label={{value:"Expected Return (%)",angle:-90,position:"insideLeft",fill:T.muted,fontSize:10}}/>
@@ -1887,17 +1887,17 @@ const EfficientFrontierTab = ({ holdings, T }) => {
                 </div>);
               }}/>
               {/* Frontier curve */}
-              <Scatter data={frontier} fill={BRAND.teal} opacity={.6} r={3}/>
+              <Scatter isAnimationActive={false} data={frontier} fill={BRAND.teal} opacity={.6} r={3}/>
               {/* Max Sharpe */}
-              <Scatter data={[maxSharpe]} fill={BRAND.green} r={8} name="Max Sharpe">
+              <Scatter isAnimationActive={false} data={[maxSharpe]} fill={BRAND.green} r={8} name="Max Sharpe">
                 <Cell fill={BRAND.green}/>
               </Scatter>
               {/* Min Vol */}
-              <Scatter data={[minVol]} fill={BRAND.blue} r={8} name="Min Vol">
+              <Scatter isAnimationActive={false} data={[minVol]} fill={BRAND.blue} r={8} name="Min Vol">
                 <Cell fill={BRAND.blue}/>
               </Scatter>
               {/* Current portfolio */}
-              <Scatter data={currentPoint} fill={BRAND.gold} r={10} name="Current">
+              <Scatter isAnimationActive={false} data={currentPoint} fill={BRAND.gold} r={10} name="Current">
                 <Cell fill={BRAND.gold}/>
               </Scatter>
             </ScatterChart>
@@ -2696,7 +2696,7 @@ const TransactionsTab = ({ holdings, T }) => {
       <Card T={T} glow={BRAND.blue}>
         <STN title="Monthly Activity" sub="Buys vs Sells by month" color={BRAND.blue} T={T}/>
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={Array.from({length:12},(_,i)=>{
+          <BarChart isAnimationActive={false} data={Array.from({length:12},(_,i)=>{
             const month = new Date(2024,i,1).toLocaleString("en",{month:"short"});
             const monthTxs = txs.filter(t=>new Date(t.date).getMonth()===i);
             return {
@@ -2711,9 +2711,9 @@ const TransactionsTab = ({ holdings, T }) => {
             <YAxis tick={{fill:T.muted,fontSize:9,fontFamily:BRAND.mono}} tickLine={false} axisLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`} width={45}/>
             <Tooltip content={<TT T={T}/>}/>
             <Legend wrapperStyle={{fontSize:10,fontFamily:BRAND.mono,paddingTop:8}}/>
-            <Bar dataKey="Buys"  fill={BRAND.teal} radius={[4,4,0,0]} opacity={.85}/>
-            <Bar dataKey="Sells" fill={BRAND.red}   radius={[4,4,0,0]} opacity={.85}/>
-            <Bar dataKey="Divs"  fill={BRAND.green} radius={[4,4,0,0]} opacity={.85}/>
+            <Bar isAnimationActive={false} dataKey="Buys"  fill={BRAND.teal} radius={[4,4,0,0]} opacity={.85}/>
+            <Bar isAnimationActive={false} dataKey="Sells" fill={BRAND.red}   radius={[4,4,0,0]} opacity={.85}/>
+            <Bar isAnimationActive={false} dataKey="Divs"  fill={BRAND.green} radius={[4,4,0,0]} opacity={.85}/>
           </BarChart>
         </ResponsiveContainer>
       </Card>
@@ -3031,7 +3031,7 @@ export default function App() {
     const id = setInterval(()=>{
       setLiveTV(v => v ? +(v+(Math.random()-.48)*120).toFixed(2) : TV);
       setLivePL(v => +(v+(Math.random()-.48)*80).toFixed(2));
-    },2000);
+    },8000);
     return()=>clearInterval(id);
   },[TV]);
 
@@ -3207,22 +3207,35 @@ export default function App() {
               );
             })}
 
-            {/* Portfolios under selected broker */}
-            {navLevel.broker&&<>
-              <span style={{color:T.muted,fontSize:14,padding:"0 4px",flexShrink:0}}>›</span>
-              {fundNames(navLevel.broker).map(port=>{
-                const bc=BROKER_COLOR[navLevel.broker]||BRAND.gold;
-                const ph=holdings.filter(h=>h.broker===navLevel.broker&&h.portfolio===port);
-                const isA=navLevel.fund===port;
-                return(
-                  <button key={port} onClick={()=>setNavLevel(n=>({...n,level:"fund",fund:port}))} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",border:"none",cursor:"pointer",fontFamily:BRAND.display,fontSize:11,fontWeight:600,whiteSpace:"nowrap",background:isA?`${bc}18`:"transparent",color:isA?bc:T.muted,borderBottom:isA?`2px solid ${bc}`:"2px solid transparent",transition:"all 0.2s",opacity:.9}}>
-                    <div style={{width:6,height:6,borderRadius:2,background:bc}}/>
-                    {port}
-                    <span style={{fontSize:8,background:`${bc}18`,color:bc,borderRadius:4,padding:"1px 5px",fontFamily:BRAND.mono}}>{ph.length}</span>
-                  </button>
-                );
-              })}
-            </>}
+            {/* Portfolios under selected broker — always visible when broker selected */}
+            {navLevel.broker&&(
+              <>
+                <span style={{color:T.muted,fontSize:14,padding:"0 4px",flexShrink:0}}>›</span>
+                {fundNames(navLevel.broker).length===0?(
+                  <span style={{fontSize:11,fontFamily:BRAND.mono,color:T.muted,padding:"0 8px"}}>No portfolios</span>
+                ):fundNames(navLevel.broker).map(port=>{
+                  const bc=BROKER_COLOR[navLevel.broker]||BRAND.gold;
+                  const ph=holdings.filter(h=>h.broker===navLevel.broker&&h.portfolio===port);
+                  const isA=navLevel.fund===port;
+                  return(
+                    <button key={port} onClick={()=>setNavLevel(n=>({...n,level:"fund",fund:port}))} style={{
+                      display:"flex",alignItems:"center",gap:5,
+                      padding:"6px 14px",border:"none",cursor:"pointer",
+                      fontFamily:BRAND.display,fontSize:11,fontWeight:700,
+                      whiteSpace:"nowrap",
+                      background:isA?`${bc}18`:"transparent",
+                      color:isA?bc:T.muted,
+                      borderBottom:isA?`2px solid ${bc}`:"2px solid transparent",
+                      transition:"all 0.2s",
+                    }}>
+                      <div style={{width:7,height:7,borderRadius:2,background:isA?bc:T.muted,transition:"all 0.2s"}}/>
+                      {port}
+                      <span style={{fontSize:8,background:`${bc}18`,color:bc,borderRadius:4,padding:"1px 6px",fontFamily:BRAND.mono}}>{ph.length}</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
           </div>
           </div>
         </div>
