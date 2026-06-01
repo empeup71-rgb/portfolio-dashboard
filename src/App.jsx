@@ -126,6 +126,33 @@ const NAME_DB = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
+// REAL-TIME PRICE ENGINE
+// ═══════════════════════════════════════════════════════════════════
+const fetchLivePrices = async (symbols) => {
+  try {
+    const syms = symbols.join(",");
+    const res  = await fetch(`/api/prices?symbols=${syms}`);
+    if(!res.ok) return null;
+    return await res.json();
+  } catch(e) {
+    console.warn("Price API unavailable:", e.message);
+    return null;
+  }
+};
+
+const fetchHistory = async (symbol, period) => {
+  try {
+    const res = await fetch(`/api/history?symbol=${symbol}&period=${period}`);
+    if(!res.ok) return null;
+    const data = await res.json();
+    return data.data || null;
+  } catch(e) {
+    console.warn("History API unavailable:", e.message);
+    return null;
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
 // BOT LEARNING SYSTEM
 // ═══════════════════════════════════════════════════════════════════
 const BOT_MEMORY_KEY = "pcc_bot_memory_v1";
@@ -164,16 +191,25 @@ const PERIODS = [
   { id:"5Y", days:1825 },{ id:"10Y", days:3650 },
 ];
 
+// Seeded random — same output every time for same inputs
+const seededRand = (seed) => {
+  let s = seed;
+  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+};
+
 const genS = (base, pid, vol=0.011) => {
   const p   = PERIODS.find(x=>x.id===pid) || PERIODS[4];
   const vs  = {"1D":.3,"1W":.6,"1M":.8,"3M":.9,"1Y":1,"3Y":1.2,"5Y":1.3,"10Y":1.4}[pid]||1;
   const sm  = {"1D":.998,"1W":.988,"1M":.970,"3M":.935,"1Y":.870,"3Y":.650,"5Y":.480,"10Y":.280}[pid]||.87;
+  // Use seeded random based on base value + period so chart is always identical
+  const seed = Math.round(base) + pid.charCodeAt(0) * 1000;
+  const rand = seededRand(seed);
   let v = base * sm;
   const N = p.days, land = Math.floor(N*.88), out = [];
   for(let i=N;i>=0;i--){
     const step=N-i;
-    if(step>=land){ const pr=(step-land)/(N-land); v=v+(base-v)*pr*.18+(Math.random()-.5)*base*vol*vs*.25; }
-    else { v+=(Math.random()-.452)*base*vol*vs; }
+    if(step>=land){ const pr=(step-land)/(N-land); v=v+(base-v)*pr*.18+(rand()-.5)*base*vol*vs*.25; }
+    else { v+=(rand()-.452)*base*vol*vs; }
     v=Math.max(v,base*.15);
     const dt=new Date(); dt.setDate(dt.getDate()-i);
     const fmt = p.days<=7
@@ -1224,18 +1260,19 @@ const genCandles = (price, pid) => {
   const p = PERIODS.find(x=>x.id===pid)||PERIODS[4];
   const N = Math.min(p.days, 365);
   let close = price * ({"1D":.998,"1W":.988,"1M":.970,"3M":.935,"1Y":.870,"3Y":.650,"5Y":.480,"10Y":.280}[pid]||.87);
+  const rand = seededRand(Math.round(price) + pid.charCodeAt(0) * 777);
   const out = [];
   for(let i=N;i>=0;i--){
-    const chg = (Math.random()-.48)*close*.022;
+    const chg = (rand()-.48)*close*.022;
     const open = close;
     close = Math.max(close+chg, price*.1);
-    const high = Math.max(open,close)*(1+Math.random()*.012);
-    const low  = Math.min(open,close)*(1-Math.random()*.012);
+    const high = Math.max(open,close)*(1+rand()*.012);
+    const low  = Math.min(open,close)*(1-rand()*.012);
     const dt = new Date(); dt.setDate(dt.getDate()-i);
     const fmt = p.days<=30
       ? dt.toLocaleDateString("en",{month:"short",day:"numeric"})
       : dt.toLocaleDateString("en",{month:"short",day:"numeric"});
-    out.push({ date:fmt, open:+open.toFixed(2), high:+high.toFixed(2), low:+low.toFixed(2), close:+close.toFixed(2), volume:Math.round(1e6+Math.random()*9e6) });
+    out.push({ date:fmt, open:+open.toFixed(2), high:+high.toFixed(2), low:+low.toFixed(2), close:+close.toFixed(2), volume:Math.round(1e6+rand()*9e6) });
   }
   out[out.length-1].close = price;
   return out;
@@ -3021,6 +3058,8 @@ export default function App() {
   const [period,  setPeriod  ] = useState("1Y");
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [priceData, setPriceData] = useState({});
+  const [priceStatus, setPriceStatus2] = useState("loading");
 
   const T = isDark ? DARK : LIGHT;
 
@@ -3112,9 +3151,9 @@ export default function App() {
                   <div style={{fontSize:13,fontFamily:BRAND.mono,fontWeight:700,color:s.c,transition:"color 0.3s"}}>{s.v}</div>
                 </div>
               ))}
-              <div style={{display:"flex",alignItems:"center",gap:5,marginLeft:12,background:BRAND.teal+"12",border:`1px solid ${BRAND.teal}30`,borderRadius:20,padding:"4px 12px"}}>
-                <span style={{width:6,height:6,borderRadius:"50%",background:BRAND.teal,display:"inline-block"}}/>
-                <span style={{fontSize:9,fontFamily:BRAND.mono,color:BRAND.teal,fontWeight:700,letterSpacing:1}}>CONNECTED</span>
+              <div style={{display:"flex",alignItems:"center",gap:5,marginLeft:12,background:priceStatus2==="live"?BRAND.teal+"12":BRAND.amber+"12",border:`1px solid ${priceStatus2==="live"?BRAND.teal:BRAND.amber}30`,borderRadius:20,padding:"4px 12px"}}>
+                <span style={{width:6,height:6,borderRadius:"50%",background:priceStatus2==="live"?BRAND.teal:BRAND.amber,display:"inline-block"}}/>
+                <span style={{fontSize:9,fontFamily:BRAND.mono,color:priceStatus2==="live"?BRAND.teal:BRAND.amber,fontWeight:700,letterSpacing:1}}>{priceStatus2==="live"?"LIVE":"OFFLINE"}</span>
               </div>
               <button onClick={()=>setIsDark(d=>!d)} style={{marginLeft:12,width:38,height:22,borderRadius:11,border:`1px solid ${T.border}`,background:isDark?BRAND.gold+"22":BRAND.blue+"22",cursor:"pointer",display:"flex",alignItems:"center",padding:"0 3px",transition:"all 0.3s",flexShrink:0}}>
                 <div style={{width:16,height:16,borderRadius:"50%",background:isDark?BRAND.gold:BRAND.blue,transform:isDark?"translateX(0)":"translateX(16px)",transition:"transform 0.3s",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{isDark?"🌙":"☀️"}</div>
