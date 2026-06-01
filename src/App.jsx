@@ -3027,11 +3027,12 @@ export default function App() {
   const TDIV = holdings.reduce((s,h)=>s+h.qty*(h.div||0),0);
 
   useEffect(()=>{ setLiveTV(TV); },[TV]);
+  // Ticker only updates header display — does NOT re-render charts
   useEffect(()=>{
     const id = setInterval(()=>{
       setLiveTV(v => v ? +(v+(Math.random()-.48)*120).toFixed(2) : TV);
       setLivePL(v => +(v+(Math.random()-.48)*80).toFixed(2));
-    },8000);
+    },30000); // update every 30 seconds only
     return()=>clearInterval(id);
   },[TV]);
 
