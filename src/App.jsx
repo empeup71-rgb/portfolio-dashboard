@@ -2955,7 +2955,11 @@ const ReportTab = ({ holdings, T }) => {
         </div>
       </Card>
 
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`
+        /* KILL ALL ANIMATIONS GLOBALLY */
+        * { animation-duration: 0s !important; animation: none !important; transition: none !important; }
+        .recharts-area-area, .recharts-bar-rectangle, .recharts-line-curve, .recharts-layer { animation: none !important; transition: none !important; }
+@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 };
@@ -3067,6 +3071,9 @@ export default function App() {
         ::-webkit-scrollbar-track{background:transparent}
         ::-webkit-scrollbar-thumb{background:${BRAND.gold}30;border-radius:2px}
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(1.6)}}
+        /* Re-enable only specific animations we want */
+        .allow-fade { animation: fadeIn 0.3s ease !important; }
+        .allow-pulse { animation: pulse 1.8s infinite !important; }
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         /* Disable all recharts animations */
         .recharts-layer path, .recharts-area-area, .recharts-bar-rectangle, .recharts-line-curve { animation:none!important; transition:none!important; }
