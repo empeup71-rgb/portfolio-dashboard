@@ -3010,8 +3010,8 @@ export default function App() {
   const [holdings,setHoldings] = useState(INITIAL_HOLDINGS);
   const [editH,   setEditH   ] = useState(null);
   const [showAdd, setShowAdd  ] = useState(false);
-  const [liveTV,  setLiveTV  ] = useState(null);
-  const [livePL,  setLivePL  ] = useState(3247.80);
+  // liveTV removed — using static TV
+  // livePL removed — using static value
   const [botMem,  setBotMem  ] = useState(initBotMemory);
   const [navLevel,setNavLevel] = useState({ level:"total", broker:null, fund:null });
   const [period,  setPeriod  ] = useState("1Y");
@@ -3026,15 +3026,9 @@ export default function App() {
   const TPLP = TPL / TC * 100;
   const TDIV = holdings.reduce((s,h)=>s+h.qty*(h.div||0),0);
 
-  useEffect(()=>{ setLiveTV(TV); },[TV]);
-  // Ticker only updates header display — does NOT re-render charts
-  useEffect(()=>{
-    const id = setInterval(()=>{
-      setLiveTV(v => v ? +(v+(Math.random()-.48)*120).toFixed(2) : TV);
-      setLivePL(v => +(v+(Math.random()-.48)*80).toFixed(2));
-    },30000); // update every 30 seconds only
-    return()=>clearInterval(id);
-  },[TV]);
+
+  // Static display — no live updates to prevent chart re-renders
+  // useEffect ticker removed for stable chart rendering
 
   useEffect(()=>{
     const mem = {...botMem, sessionCount: (botMem?.sessionCount||1)+1, lastVisit: new Date().toISOString() };
@@ -3099,8 +3093,8 @@ export default function App() {
             </div>
             <div style={{display:"flex",alignItems:"center",gap:0}}>
               {[
-                {l:"TOTAL",  v:`$${(liveTV||TV).toLocaleString("en",{minimumFractionDigits:2})}`,c:BRAND.gold},
-                {l:"DAY P&L",v:`${livePL>=0?"+":""}$${Math.abs(livePL).toFixed(2)}`,              c:livePL>=0?BRAND.teal:BRAND.red},
+                {l:"TOTAL",  v:`$${TV.toLocaleString("en",{minimumFractionDigits:2})}`,c:BRAND.gold},
+                {l:"DAY P&L",v:"+$3,247.80",              c:BRAND.teal},
                 {l:"YTD",    v:"+9.74%",  c:BRAND.teal},
                 {l:"SHARPE", v:"1.84",    c:BRAND.blue},
                 {l:"BETA",   v:"0.92",    c:BRAND.purple},
@@ -3112,8 +3106,8 @@ export default function App() {
                 </div>
               ))}
               <div style={{display:"flex",alignItems:"center",gap:5,marginLeft:12,background:BRAND.teal+"12",border:`1px solid ${BRAND.teal}30`,borderRadius:20,padding:"4px 12px"}}>
-                <span style={{width:6,height:6,borderRadius:"50%",background:BRAND.teal,display:"inline-block",animation:"pulse 1.8s infinite"}}/>
-                <span style={{fontSize:9,fontFamily:BRAND.mono,color:BRAND.teal,fontWeight:700,letterSpacing:1}}>LIVE</span>
+                <span style={{width:6,height:6,borderRadius:"50%",background:BRAND.teal,display:"inline-block"}}/>
+                <span style={{fontSize:9,fontFamily:BRAND.mono,color:BRAND.teal,fontWeight:700,letterSpacing:1}}>CONNECTED</span>
               </div>
               <button onClick={()=>setIsDark(d=>!d)} style={{marginLeft:12,width:38,height:22,borderRadius:11,border:`1px solid ${T.border}`,background:isDark?BRAND.gold+"22":BRAND.blue+"22",cursor:"pointer",display:"flex",alignItems:"center",padding:"0 3px",transition:"all 0.3s",flexShrink:0}}>
                 <div style={{width:16,height:16,borderRadius:"50%",background:isDark?BRAND.gold:BRAND.blue,transform:isDark?"translateX(0)":"translateX(16px)",transition:"transform 0.3s",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{isDark?"🌙":"☀️"}</div>
