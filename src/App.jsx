@@ -3050,7 +3050,7 @@ export default function App() {
   const deleteHolding = id => { setHoldings(prev=>prev.filter(x=>x.id!==id)); setEditH(null); };
 
   const brokerNames = [...new Set(holdings.map(h=>h.broker))];
-  const fundNames   = broker => [...new Set(holdings.filter(h=>h.broker===broker).map(h=>h.portfolio))];
+  const fundNames   = broker => { const portfolios=[...new Set(holdings.filter(h=>h.broker===broker).map(h=>h.portfolio||h.fund||'Default'))]; return portfolios.filter(Boolean); };
 
   const visibleHoldings = useMemo(()=>{
     if(navLevel.level==="portfolio")   return holdings.filter(h=>h.broker===navLevel.broker&&h.portfolio===navLevel.fund);
@@ -3073,6 +3073,10 @@ export default function App() {
         ::-webkit-scrollbar-thumb{background:${BRAND.gold}30;border-radius:2px}
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(1.6)}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        /* Disable all recharts animations */
+        .recharts-layer path, .recharts-area-area, .recharts-bar-rectangle, .recharts-line-curve { animation:none!important; transition:none!important; }
+        .recharts-area { animation:none!important; }
+        .recharts-bar { animation:none!important; }
         input::placeholder{color:${T.muted}}
         select option{background:${T.bg2};color:${T.text}}
         input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
