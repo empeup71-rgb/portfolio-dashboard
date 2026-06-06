@@ -2997,11 +2997,6 @@ const ReportTab = ({ holdings, T }) => {
   );
 };
 
-// ═════════
-
-    </div>
-  );
-};
 
 // ═══════════════════════════════════════════════════════════════════
 // ANALYSIS PANEL — shown below chart at each level
