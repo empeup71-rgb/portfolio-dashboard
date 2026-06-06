@@ -2992,11 +2992,13 @@ const ReportTab = ({ holdings, T }) => {
         </div>
       </Card>
 
-      <style>{`
-        /* KILL ALL ANIMATIONS GLOBALLY */
-        * { animation-duration: 0s !important; animation: none !important; transition: none !important; }
-        .recharts-area-area, .recharts-bar-rectangle, .recharts-line-curve, .recharts-layer { animation: none !important; transition: none !important; }
-@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+};
+
+// ═════════
+
     </div>
   );
 };
@@ -3105,6 +3107,7 @@ export default function App() {
     <div style={{minHeight:"100vh",background:T.bg,color:T.text,fontFamily:BRAND.display,transition:"background 0.3s,color 0.3s"}}>
       <style>{`
         @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+        .recharts-area-area, .recharts-bar-rectangle, .recharts-line-curve { animation: none !important; }
         *{box-sizing:border-box;margin:0;padding:0}
         ::-webkit-scrollbar{width:3px;height:3px}
         ::-webkit-scrollbar-track{background:transparent}
